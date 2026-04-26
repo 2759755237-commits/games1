@@ -2005,6 +2005,147 @@
     if (typeof GameApp.UI !== 'undefined' && document.getElementById('view-roster').classList.contains('active')) {
         GameApp.UI.renderRoster();
     }
+    // ========================================================================
+    // [真实战斗演武补丁 (Combat Visuals & Logic Patch)]
+    // 逻辑增强：将 Data 中的 skill 和 trait 注入战斗循环，实现技能名飘字与倍率计算。
+    // 视觉增强：新增技能释放动画条、震屏反馈、特性触发气泡。
+    // ========================================================================
+
+    // 1. 注入高级战斗视觉 CSS
+    const combatStyle = document.createElement('style');
+    combatStyle.innerHTML = `
+        .skill-banner {
+            position: absolute; left: 50%; top: 20%; transform: translateX(-50%);
+            background: linear-gradient(90deg, transparent, rgba(185, 28, 28, 0.9), transparent);
+            color: #fff; font-weight: 900; font-size: 1.8rem; padding: 5px 60px;
+            white-space: nowrap; font-style: italic; text-shadow: 0 0 10px #000;
+            z-index: 100; pointer-events: none; animation: skillSlide 0.8s ease-out forwards;
+            border-top: 2px solid #fbbf24; border-bottom: 2px solid #fbbf24;
+        }
+        @keyframes skillSlide {
+            0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+            80% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -30px) scale(0.8); }
+        }
+        .trait-bubble {
+            position: absolute; background: rgba(0,0,0,0.7); color: #c084fc;
+            font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #c084fc;
+            animation: traitPop 1s forwards; pointer-events: none; z-index: 50;
+        }
+        @keyframes traitPop {
+            0% { opacity: 0; transform: translateY(0); }
+            20% { opacity: 1; transform: translateY(-10px); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+        .shake-screen { animation: screenShake 0.2s infinite; }
+        @keyframes screenShake {
+            0% { transform: translate(2px, 1px) rotate(0deg); }
+            20% { transform: translate(-1px, -2px) rotate(-1deg); }
+            40% { transform: translate(-3px, 0px) rotate(1deg); }
+            60% { transform: translate(3px, 2px) rotate(0deg); }
+            80% { transform: translate(1px, -1px) rotate(1deg); }
+            100% { transform: translate(-1px, 2px) rotate(-1deg); }
+        }
+    `;
+    document.head.appendChild(combatStyle);
+
+    // 2. 增强 UI 渲染器：新增技能与特性表现方法
+    GameApp.UI.showSkillBanner = function(skillName, rarity) {
+        const arena = document.getElementById('arena');
+        const banner = document.createElement('div');
+        banner.className = 'skill-banner';
+        banner.innerText = `【${skillName}】`;
+        
+        // 根据稀有度调整颜色
+        if (rarity === 'SSR' || rarity === 'SP') {
+            banner.style.background = 'linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.9), transparent)';
+            // SSR 释放技能触发震屏
+            arena.classList.add('shake-screen');
+            setTimeout(() => arena.classList.remove('shake-screen'), 400);
+        }
+        
+        arena.appendChild(banner);
+        setTimeout(() => banner.remove(), 800);
+    };
+
+    GameApp.UI.showTraitBubble = function(shikigamiDomId, traitName) {
+        const anchor = document.getElementById(shikigamiDomId);
+        if (!anchor) return;
+        const bubble = document.createElement('div');
+        bubble.className = 'trait-bubble';
+        bubble.innerText = traitName;
+        bubble.style.left = '0';
+        bubble.style.top = '-20px';
+        anchor.appendChild(bubble);
+        setTimeout(() => bubble.remove(), 1000);
+    };
+
+    // 3. 重写战斗逻辑循环：注入技能概率与特性表现
+    GameApp.Systems.Combat.processTick = function(deltaSeconds) {
+        if (this.isBossDead) return;
+
+        let teamIds = GameApp.State.Data.Team;
+        if (teamIds.length === 0) return;
+
+        // 遍历队伍中的式神，每个式神独立计算本轮动作
+        teamIds.forEach(id => {
+            let stats = GameApp.State.getShikigamiStats(id);
+            let rawData = GameApp.Data.Shikigami[id];
+            if (!stats) return;
+
+            // 计算动作冷却 (根据攻击速度)
+            // 咸鱼模式简化：每秒攻击一次，但加入 20% 的随机技能触发率
+            let isSkillReady = Math.random() < 0.20; 
+            let isTraitReady = Math.random() < 0.15; // 特性闪现概率
+
+            // 基础伤害
+            let damage = stats.atk * deltaSeconds;
+            let currentSkill = rawData.skill;
+
+            if (isSkillReady && currentSkill) {
+                // 技能伤害加成
+                damage *= currentSkill.mult;
+                // 只有上阵的前 5 人会有真实的 UI 动作展示
+                GameApp.UI.showSkillBanner(currentSkill.name, stats.rarity);
+            }
+
+            if (isTraitReady && rawData.trait) {
+                GameApp.UI.showTraitBubble(`combat-s-${id}`, rawData.trait.name);
+            }
+
+            // 最终暴击判定
+            let isCrit = Math.random() < (stats.initCritRate || 0.1);
+            if (isCrit) damage *= (stats.initCritDmg || 1.5);
+
+            let finalDmg = Math.floor(damage);
+            this.currentEnemyHp -= finalDmg;
+
+            // UI 表现
+            if (finalDmg > 0) {
+                GameApp.UI.updateBossHpBar(this.currentEnemyHp, this.currentEnemyMaxHp);
+                GameApp.UI.spawnDamageText(finalDmg, isCrit);
+                // 如果是技能攻击，动作幅度更大
+                GameApp.UI.triggerAttackAnim(id, isSkillReady);
+            }
+        });
+
+        if (this.currentEnemyHp <= 0) {
+            this._handleEnemyDeath();
+        }
+    };
+
+    // 4. 修复：支持按特定式神 ID 触发动画
+    GameApp.UI.triggerAttackAnim = function(id, isHeavy) {
+        let el = document.getElementById(`combat-s-${id}`);
+        if (el) {
+            el.style.transition = '0.1s';
+            el.style.transform = isHeavy ? 'translate(30px, -30px) scale(1.3)' : 'translate(15px, -15px)';
+            setTimeout(() => {
+                el.style.transform = 'translate(0, 0) scale(1)';
+            }, 150);
+        }
+    };
 </script>
 </body>
 </html>
