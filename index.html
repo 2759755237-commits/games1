@@ -1796,6 +1796,140 @@
             bossIconEl.style.filter = 'none';
         }
         this.updateBossHpBar(maxHp, maxHp);
+    };// ========================================================================
+    // [紧急热修复与视觉增强补丁 (Gacha Visual Overhaul Patch)]
+    // 修复抽卡按钮作用域丢失问题，并重写极为华丽的商业级抽卡表现动画。
+    // ========================================================================
+
+    // 1. 动态修复 HTML 中的点击事件绑定错误
+    const summonBtns = document.querySelectorAll('.btn-summon');
+    if (summonBtns.length >= 2) {
+        // 强行覆盖原有的 onclick，指向正确的 Systems 架构
+        summonBtns[0].setAttribute('onclick', 'GameApp.Systems.Gacha.summon(1)');
+        summonBtns[1].setAttribute('onclick', 'GameApp.Systems.Gacha.summon(10)');
+    }
+
+    // 2. 动态注入高级 CSS 特效动画
+    const gachaStyles = document.createElement('style');
+    gachaStyles.innerHTML = `
+        @keyframes talismanShake {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-10deg) scale(1.1); filter: brightness(1.5); }
+            75% { transform: rotate(10deg) scale(1.1); filter: brightness(1.5); }
+        }
+        @keyframes flashFadeOut {
+            0% { opacity: 1; backdrop-filter: blur(20px); }
+            100% { opacity: 0; backdrop-filter: blur(0px); }
+        }
+        .gacha-toast {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: white; padding: 12px 25px;
+            border-radius: 30px; border: 1px solid #facc15; z-index: 9999;
+            box-shadow: 0 5px 15px rgba(250, 204, 21, 0.3); font-weight: bold;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, fadeOut 0.3s ease 1.7s forwards;
+        }
+        @keyframes fadeOut { to { opacity: 0; transform: translate(-50%, -20px); } }
+    `;
+    document.head.appendChild(gachaStyles);
+
+    // 3. 补充全局 Toast 提示系统 (解决资源不足没反应的问题)
+    GameApp.UI.toast = function(msg, isDanger = false) {
+        let toast = document.createElement('div');
+        toast.className = 'gacha-toast';
+        toast.innerText = msg;
+        if (isDanger) {
+            toast.style.borderColor = '#ef4444';
+            toast.style.boxShadow = '0 5px 15px rgba(239, 68, 68, 0.3)';
+        }
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+    };
+
+    // 拦截抽卡操作，加入资源不足提示
+    const originalSummon = GameApp.Systems.Gacha.summon;
+    GameApp.Systems.Gacha.summon = function(times) {
+        let costConfig = GameApp.Data.Gacha.StandardBanner;
+        let totalCost = times === 10 ? costConfig.tenPullDiscount : costConfig.costPerPull;
+        
+        if (!GameApp.State.hasResource(costConfig.costType, totalCost)) {
+            GameApp.UI.toast("勾玉不足！请前往【讨伐】挂机推图获取。", true);
+            return null; // 拦截执行
+        }
+        return originalSummon.call(this, times); // 资源足够，执行原方法
+    };
+
+    // 4. 重写抽卡结果展示 (史诗级出金动画)
+    GameApp.UI.showGachaResults = function(results) {
+        const overlay = document.getElementById('gacha-overlay');
+        const grid = document.getElementById('ui-gacha-results');
+        
+        grid.innerHTML = '';
+        overlay.style.display = 'flex';
+
+        // 阶段 1：判定最高稀有度，决定闪光颜色
+        let highestRarity = 'N';
+        let rarityWeight = { 'N':1, 'R':2, 'SR':3, 'SSR':4, 'SP':5 };
+        
+        results.forEach(res => {
+            if (rarityWeight[res.data.rarity] > rarityWeight[highestRarity]) {
+                highestRarity = res.data.rarity;
+            }
+        });
+
+        let glowColor = '#ffffff'; // 默认白光
+        if (highestRarity === 'SSR' || highestRarity === 'SP') glowColor = '#fbbf24'; // SSR金光
+        else if (highestRarity === 'SR') glowColor = '#c084fc'; // SR紫光
+        else if (highestRarity === 'R') glowColor = '#60a5fa'; // R蓝光
+
+        // 阶段 2：绘制召唤灵符并震动
+        grid.innerHTML = `
+            <div style="width: 100%; display: flex; justify-content: center; margin-top: 100px;">
+                <div style="font-size: 8rem; text-shadow: 0 0 50px ${glowColor}; animation: talismanShake 0.15s infinite alternate;">
+                    📿
+                </div>
+            </div>
+        `;
+
+        // 阶段 3：1.2秒后屏幕爆闪，展示卡牌
+        setTimeout(() => {
+            // 爆闪特效遮罩
+            grid.innerHTML = `<div style="position:fixed; inset:0; background:${glowColor}; z-index:1000; animation: flashFadeOut 0.8s forwards; pointer-events:none;"></div>`;
+            
+            // 重新设置网格布局以排列卡牌
+            grid.style.display = 'flex';
+            grid.style.flexWrap = 'wrap';
+            grid.style.justifyContent = 'center';
+            grid.style.gap = '15px';
+            grid.style.padding = '20px';
+            grid.style.marginTop = '0';
+
+            // 级联弹窗动画
+            results.forEach((res, index) => {
+                let sData = res.data;
+                let newTag = res.isNew ? `<div class="gacha-card-new">NEW</div>` : '';
+                
+                let card = document.createElement('div');
+                card.className = `gacha-card r-${sData.rarity}`;
+                
+                // 每张卡牌延迟 0.15 秒飞出，制造节奏感
+                card.style.animationDelay = `${index * 0.15}s`; 
+                card.style.opacity = '0';
+                card.style.animationFillMode = 'forwards';
+                
+                card.innerHTML = `
+                    ${newTag}
+                    <div class="gacha-card-icon">${sData.icon}</div>
+                    <div class="gacha-card-name">${sData.name}</div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            // 同步静默刷新其他界面数据
+            GameApp.UI.updateResources();
+            if (document.getElementById('view-roster').classList.contains('active')) {
+                GameApp.UI.renderRoster();
+            }
+        }, 1200); // 1.2秒的画符前摇
     };
 </script>
 </body>
