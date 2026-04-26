@@ -1832,6 +1832,131 @@
         }
         container.innerHTML = html;
     };
+    // ========================================================================
+    // [极致体验优化补丁 (QoL & Welfare Patch)]
+    // 新增：8888十亿金币兑换码、微积分级一键强化算法 (Max Upgrade)
+    // ========================================================================
+
+    // 1. 重写兑换码逻辑，加入 8888 财神暗号
+    GameApp.UI.openRedeemCode = function() {
+        let code = prompt("请输入神龛暗号 (兑换码)：\n(提示: 6699 或 8888)");
+        if (!code) return;
+
+        if (code === "6699") {
+            if (GameApp.State.Data.redeemedCodes["6699"]) {
+                GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+            } else {
+                GameApp.State.modifyResource('jade', 100000000);
+                GameApp.State.Data.redeemedCodes["6699"] = true;
+                GameApp.UI.toast("🎉 兑换成功！神明赐福：获得 100,000,000 勾玉！");
+            }
+        } else if (code === "8888") {
+            if (GameApp.State.Data.redeemedCodes["8888"]) {
+                GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+            } else {
+                GameApp.State.modifyResource('coins', 1000000000);
+                GameApp.State.Data.redeemedCodes["8888"] = true;
+                GameApp.UI.toast("🎉 兑换成功！财神附体：获得 1,000,000,000 金币！");
+            }
+        } else {
+            GameApp.UI.toast("暗号无效或已过期。", true);
+        }
+    };
+
+    // 2. 新增核心业务逻辑：一键极速升段 (Max Upgrade)
+    GameApp.Systems.Upgrade.levelUpMax = function(shikigamiId) {
+        let s = GameApp.State.Data.Shikigami[shikigamiId];
+        let baseData = GameApp.Data.Shikigami[shikigamiId];
+        let rarityData = GameApp.Data.Rarity[baseData.rarity];
+        
+        if (!s || s.level >= rarityData.maxLevel) {
+            GameApp.UI.toast("式神已达当前满级！", true);
+            return false;
+        }
+
+        let coins = GameApp.State.Data.Resources.coins;
+        let totalCost = 0;
+        let levelsGained = 0;
+        let currentCost = Math.floor(rarityData.upgradeCostBase * Math.pow(rarityData.upgradeCostExp, s.level - 1));
+
+        // 极速循环演算：在不超预算且不满级的情况下，疯狂计算升级
+        // (使用 while 循环模拟真实的一级级扣费，绝对精确且防作弊)
+        while (coins >= (totalCost + currentCost) && (s.level + levelsGained) < rarityData.maxLevel) {
+            totalCost += currentCost;
+            levelsGained++;
+            currentCost = Math.floor(rarityData.upgradeCostBase * Math.pow(rarityData.upgradeCostExp, s.level + levelsGained - 1));
+        }
+
+        if (levelsGained > 0) {
+            GameApp.State.modifyResource('coins', -totalCost);
+            s.level += levelsGained;
+            
+            GameApp.State.autoFormTeam();
+            if (typeof GameApp.UI !== 'undefined') {
+                GameApp.UI.renderRoster();
+                GameApp.UI.updateDPS();
+            }
+            GameApp.UI.toast(`🚀 极限突破！连升 ${levelsGained} 级，消耗金币 ${GameApp.Utils.formatNumber(totalCost)}！`);
+            return true;
+        } else {
+            GameApp.UI.toast("金币不足，无法进行强化。", true);
+            return false;
+        }
+    };
+
+    // 3. 重写式神录UI渲染，将单次强化按钮升级为双按钮布局（强化 + 一键强化）
+    GameApp.UI.renderRoster = function() {
+        const container = document.getElementById('ui-roster-list');
+        let owned = [];
+        for (let id in GameApp.State.Data.Shikigami) {
+            owned.push(GameApp.State.getShikigamiStats(id));
+        }
+        
+        owned.sort((a, b) => b.atk - a.atk); // 按攻击力排序
+        let html = '';
+        const currentCoins = GameApp.State.Data.Resources.coins;
+
+        owned.forEach(s => {
+            let isMax = s.isMaxLevel;
+            let canLevelUp = currentCoins >= s.upgradeCost;
+            let canStarUp = s.shards >= s.starUpCost;
+            
+            let starsHtml = '<span style="color:#fbbf24; font-size:0.7rem;">' + '★'.repeat(s.star) + '</span>';
+
+            // 升级操作区改为水平布局的两个按钮
+            let btnLevelHtml = isMax 
+                ? `<button class="btn-upgrade" disabled style="background:#444; width:100%;">已满级</button>`
+                : `<div style="display:flex; gap:5px; width:100%;">
+                     <button class="btn-upgrade" ${canLevelUp ? '' : 'disabled'} onclick="GameApp.Systems.Upgrade.levelUp('${s.id}')" style="flex:1; padding:5px;">+1级</button>
+                     <button class="btn-upgrade" ${canLevelUp ? '' : 'disabled'} onclick="GameApp.Systems.Upgrade.levelUpMax('${s.id}')" style="flex:1; padding:5px; background:${canLevelUp?'#d97706':'#444'};">一键</button>
+                   </div>
+                   <div style="font-size:0.6rem; color:${canLevelUp?'#facc15':'#ef4444'}; text-align:center; margin-top:2px;">单次: 🪙 ${GameApp.Utils.formatNumber(s.upgradeCost)}</div>`;
+            
+            let btnStarHtml = `<button class="btn-upgrade" ${canStarUp ? '' : 'disabled'} onclick="GameApp.Systems.Upgrade.starUp('${s.id}')" style="background:${canStarUp?'#c084fc':'#444'}; width:100%;">觉醒 <span style="font-size:0.6rem; color:${canStarUp?'#fff':'#ef4444'}">🧩 ${s.shards}/${s.starUpCost}</span></button>`;
+
+            html += `
+                <div class="shikigami-card" style="align-items:flex-start;">
+                    <div class="s-avatar r-${s.rarity}">${s.icon}</div>
+                    <div class="s-info" style="margin-left:10px;">
+                        <div class="s-name" style="margin-bottom:2px;">${s.name} <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">Lv.${s.level}</span> ${starsHtml}</div>
+                        <div class="s-stats" style="line-height:1.4;">
+                            灵力: <span>${GameApp.Utils.formatNumber(s.atk)}</span><br>
+                            储备: <span>${s.shards}</span> 碎片
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px; width:110px;">
+                        ${btnLevelHtml}
+                        ${btnStarHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        if (owned.length === 0) {
+            html = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">空空如也，请前往召唤。</div>`;
+        }
+        container.innerHTML = html;
+    };
 </script>
 </body>
 </html>
