@@ -2,717 +2,400 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文明余烬 v5.0 - 黎明协议</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>末日拾荒者 (Mobile 原生版)</title>
     <style>
-        /* ================= 工业级 CSS 系统设计 ================= */
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;500;700&display=swap');
-
         :root {
-            --bg-base: #050508;
-            --bg-panel: rgba(18, 18, 26, 0.75);
-            --bg-card: rgba(30, 30, 42, 0.6);
-            --border-primary: rgba(80, 80, 120, 0.3);
-            --border-glow: rgba(100, 200, 255, 0.4);
-            
-            --text-main: #e2e8f0;
-            --text-muted: #64748b;
-            
-            --theme-accent: #0ea5e9; /* 科幻蓝 */
-            --theme-warn: #f59e0b;   /* 警告黄 */
-            --theme-danger: #ef4444; /* 危险红 */
-            --theme-success: #10b981;/* 安全绿 */
-            --theme-mystic: #8b5cf6; /* 神秘紫 */
-
-            --font-ui: 'Noto Sans SC', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-            
-            --transition-fast: 0.15s ease;
-            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --bg-dark: #121212;
+            --surface: #1e1e1e;
+            --primary: #4CAF50;
+            --primary-dark: #2E7D32;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --danger: #ef5350;
+            --rare: #ab47bc;
+            --nav-height: 65px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
         body {
-            background-color: var(--bg-base);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.05), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05), transparent 25%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
             color: var(--text-main);
-            font-family: var(--font-ui);
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            font-size: 14px;
         }
 
-        /* 顶部仪表盘 (Header) */
-        #header {
-            height: 60px; background: var(--bg-panel); backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-primary); display: flex; justify-content: space-between;
-            align-items: center; padding: 0 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 100;
+        /* 顶部资源仪表盘 */
+        .header-dashboard {
+            background-color: var(--surface);
+            padding: env(safe-area-inset-top) 15px 15px 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 10;
         }
-        .sys-title { font-weight: 700; font-size: 1.2rem; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 10px;}
-        .sys-title::before { content: ''; display: block; width: 8px; height: 8px; background: var(--theme-warn); border-radius: 50%; box-shadow: 0 0 10px var(--theme-warn); }
-        
-        .global-stats { display: flex; gap: 20px; font-family: var(--font-mono); }
-        .stat-pill { background: rgba(0,0,0,0.4); border: 1px solid var(--border-primary); padding: 6px 15px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;}
-        .stat-pill i { font-style: normal; font-size: 1.1rem; }
+        .res-grid { display: flex; justify-content: space-between; margin-top: 10px; }
+        .res-item { text-align: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; flex: 1; margin: 0 5px; }
+        .res-value { font-size: 1.2rem; font-weight: bold; font-family: monospace; }
+        .res-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 
-        /* 主体网格布局 */
-        #app-core { display: flex; flex: 1; overflow: hidden; padding: 20px; gap: 20px; }
-
-        /* 左侧面板：物资与生态网络 */
-        #panel-left { width: 320px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; padding-right: 5px;}
-        .glass-panel { background: var(--bg-panel); backdrop-filter: blur(12px); border: 1px solid var(--border-primary); border-radius: 12px; padding: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        .panel-title { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
-
-        /* 资源进度条组件 */
-        .res-tracker { margin-bottom: 12px; }
-        .res-header { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
-        .res-name { display: flex; align-items: center; gap: 6px; font-weight: 500; }
-        .res-val { font-family: var(--font-mono); }
-        .res-rate { font-size: 0.75rem; font-family: var(--font-mono); text-align: right; margin-top: 2px;}
-        .progress-track { width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
-        .progress-fill { height: 100%; width: 0%; transition: width 0.3s ease; }
-        .rate-pos { color: var(--theme-success); } .rate-neg { color: var(--theme-danger); }
-
-        /* 中央面板：核心行动与建设 */
-        #panel-center { flex: 1; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        
-        /* 交互卡片设计 (重中之重) */
-        .action-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
-        .card-btn { 
-            background: var(--bg-card); border: 1px solid var(--border-primary); border-radius: 8px; padding: 15px; 
-            cursor: pointer; text-align: left; transition: var(--transition-smooth); position: relative; overflow: hidden;
-            display: flex; flex-direction: column; gap: 8px;
+        /* 中间内容区 */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: calc(var(--nav-height) + 20px); /* 防底部遮挡 */
         }
-        .card-btn::before { content:''; position:absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.03), transparent); transform: translateX(-100%); transition: 0.5s; }
-        .card-btn:hover:not(:disabled) { border-color: var(--theme-accent); transform: translateY(-3px); box-shadow: 0 6px 20px rgba(14, 165, 233, 0.15); }
-        .card-btn:hover:not(:disabled)::before { transform: translateX(100%); }
-        .card-btn:active:not(:disabled) { transform: translateY(1px); }
-        .card-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(80%); }
-        
-        .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; }
-        .card-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; min-height: 35px;}
-        .card-cost { font-family: var(--font-mono); font-size: 0.75rem; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px; display: inline-flex; gap: 10px; flex-wrap: wrap;}
-        .cost-item { display: flex; align-items: center; gap: 4px; }
-        .cost-item.lack { color: var(--theme-danger); }
 
-        /* 右侧面板：实体监控与日志 */
-        #panel-right { width: 360px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        
-        /* 村民监控模块 */
-        .entity-list { display: flex; flex-direction: column; gap: 10px; }
-        .entity-card { background: rgba(0,0,0,0.3); border-left: 3px solid var(--theme-accent); padding: 10px 12px; border-radius: 4px; border-top: 1px solid rgba(255,255,255,0.02); border-right: 1px solid rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.02); }
-        .entity-card.dead { border-left-color: var(--theme-danger); opacity: 0.5; filter: grayscale(1); }
-        .ent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .ent-name { font-weight: 700; font-size: 0.95rem; }
-        .ent-job { font-size: 0.75rem; color: var(--theme-accent); background: rgba(14, 165, 233, 0.1); padding: 2px 6px; border-radius: 3px; }
-        
-        /* 精美下拉框 */
-        select.ui-select { appearance: none; background: #000; color: #fff; border: 1px solid var(--border-primary); padding: 4px 8px; border-radius: 4px; font-family: var(--font-ui); font-size: 0.8rem; cursor: pointer; outline: none; width: 100%; transition: 0.2s;}
-        select.ui-select:hover { border-color: var(--text-muted); }
-        select.ui-select:focus { border-color: var(--theme-accent); box-shadow: 0 0 0 2px rgba(14,165,233,0.2); }
+        /* 标签页控制 */
+        .tab-view { display: none; animation: fadeIn 0.2s ease-out; }
+        .tab-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 终端日志系统 */
-        #terminal-log { background: #000; font-family: var(--font-mono); font-size: 0.75rem; padding: 15px; border-radius: 8px; border: 1px solid #1f2937; height: 250px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
-        .log-line { margin-bottom: 4px; line-height: 1.4; opacity: 0.9; animation: logIn 0.2s ease-out; }
-        .log-time { color: #4b5563; margin-right: 8px; }
-        .c-sys { color: var(--theme-accent); } .c-warn { color: var(--theme-warn); } .c-danger { color: var(--theme-danger); } .c-succ { color: var(--theme-success); }
-        @keyframes logIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 0.9; transform: translateX(0); } }
+        /* 超爽大按钮 (Juicy Button) */
+        .btn-huge {
+            width: 100%;
+            height: 120px;
+            background: var(--primary);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: bold;
+            box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(0,0,0,0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 30px;
+            position: relative;
+        }
+        .btn-huge:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 var(--primary-dark), 0 5px 10px rgba(0,0,0,0.4);
+        }
+        .btn-huge-sub { font-size: 0.9rem; font-weight: normal; opacity: 0.8; margin-top: 5px; }
 
-        /* 屏幕飘字特效 (Floating Text) */
-        .float-text { position: fixed; pointer-events: none; font-weight: 700; font-size: 1.2rem; font-family: var(--font-mono); animation: floatUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; z-index: 9999; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
-        @keyframes floatUp { 0% { transform: translateY(0) scale(0.8); opacity: 1; } 100% { transform: translateY(-60px) scale(1.2); opacity: 0; } }
+        /* 卡片列表 (手机端标准UI) */
+        .list-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .card-info h3 { font-size: 1.1rem; margin-bottom: 5px; }
+        .card-info p { font-size: 0.8rem; color: var(--text-muted); }
+        .btn-small { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; transition: 0.2s; }
+        .btn-small:active { background: #555; transform: scale(0.95); }
+        .btn-small:disabled { opacity: 0.5; background: #222; }
 
-        /* 控制面板显隐 */
-        .locked-module { display: none !important; }
+        /* 底部导航栏 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+            background: var(--surface);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            padding-bottom: env(safe-area-inset-bottom);
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            transition: color 0.2s;
+        }
+        .nav-icon { font-size: 1.5rem; margin-bottom: 2px; transition: transform 0.2s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active .nav-icon { transform: translateY(-3px) scale(1.1); }
+
+        /* 屏幕飘字特效 */
+        .floating-text {
+            position: fixed;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 1.5rem;
+            z-index: 9999;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            animation: floatUp 1s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            50% { transform: translateY(-40px) scale(1.2); opacity: 1; }
+            100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+        }
+
+        /* 盲盒掉落特效界面 */
+        #loot-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            animation: fadeIn 0.2s;
+        }
+        .loot-box { background: var(--surface); padding: 30px; border-radius: 16px; text-align: center; border: 2px solid var(--rare); box-shadow: 0 0 30px rgba(171, 71, 188, 0.4); }
     </style>
 </head>
 <body>
 
-    <div id="header">
-        <div class="sys-title">协议节点 <span style="color:var(--text-muted);font-size:0.8rem;">v5.0.1</span></div>
-        <div class="global-stats">
-            <div class="stat-pill" title="系统运行天数"><i>⏳</i> Day <span id="ui-day">1</span></div>
-            <div class="stat-pill" title="当前气候节律"><i>🌡️</i> <span id="ui-season">春季节律</span></div>
-            <div class="stat-pill" title="营地可用人口/总容量"><i>👥</i> <span id="ui-pop">0</span> / <span id="ui-popmax">0</span></div>
-            <div class="stat-pill" style="border-color:var(--theme-mystic);" title="解析的科技知识数据"><i>🧬</i> <span id="ui-tech">0</span> Data</div>
-        </div>
-        <div>
-            <button class="ui-select" style="padding:6px 12px;" onclick="window.Engine.saveGame()">强制保存</button>
-            <button class="ui-select" style="padding:6px 12px; color:var(--theme-danger); border-color:var(--theme-danger);" onclick="window.Engine.resetGame()">重置协议</button>
+    <div class="header-dashboard">
+        <div style="font-weight: bold; font-size: 1.1rem; color: var(--primary);">末日生存 D-<span id="ui-day">1</span></div>
+        <div class="res-grid">
+            <div class="res-item"><div class="res-value" id="res-wood">0</div><div class="res-label">🪵 废木材</div></div>
+            <div class="res-item"><div class="res-value" id="res-food">0</div><div class="res-label">🥫 罐头</div></div>
+            <div class="res-item"><div class="res-value" id="res-gear">0</div><div class="res-label">⚙️ 零件</div></div>
         </div>
     </div>
 
-    <div id="app-core">
+    <div class="content-area">
         
-        <div id="panel-left">
-            <div class="glass-panel">
-                <div class="panel-title"><span>仓储网络</span> <span id="ui-maxres">CAP: 100</span></div>
-                <div id="res-container">
-                    </div>
-            </div>
+        <div id="tab-scavenge" class="tab-view active">
+            <h2 style="font-size: 1.2rem; margin-bottom: 10px;">废墟边缘</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">在这片区域搜寻一切有用的物资。小心变异生物。</p>
             
-            <div class="glass-panel locked-module" id="module-climate">
-                <div class="panel-title">生态压力</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-                    当前季节对生存系统的干预：<br>
-                    <span id="ui-season-desc" style="color: var(--text-main);">...</span>
-                </div>
+            <button class="btn-huge" id="btn-scavenge">
+                深入搜寻
+                <div class="btn-huge-sub">消耗精力，获取物资</div>
+            </button>
+
+            <div style="margin-top: 30px; text-align: center; font-size: 0.85rem; color: #666;">
+                * 每次搜寻有 5% 概率发现【战前补给箱】
             </div>
         </div>
 
-        <div id="panel-center">
+        <div id="tab-camp" class="tab-view">
+            <h2 style="font-size: 1.2rem; margin-bottom: 15px;">避难所建设</h2>
             
-            <div class="glass-panel">
-                <div class="panel-title">手动干预指令</div>
-                <div class="action-grid">
-                    <button class="card-btn" onclick="window.Actions.manualGather(event)">
-                        <div class="card-title">徒手拾荒</div>
-                        <div class="card-desc">在附近搜集散落的生物质和碳基材料。</div>
-                        <div class="card-cost"><span style="color:var(--theme-success);">+ 木材, 食物</span></div>
-                    </button>
+            <div class="list-card">
+                <div class="card-info">
+                    <h3>雨水收集器 <span id="lvl-water" style="font-size: 0.8rem; color: var(--primary);">Lv.0</span></h3>
+                    <p>自动生产罐头 (+1/秒)</p>
+                    <p style="margin-top:5px; color:#ff9800;">需 20 木材, 5 零件</p>
                 </div>
+                <button class="btn-small" onclick="Game.upgrade('water')" id="btn-upg-water">升级</button>
             </div>
 
-            <div class="glass-panel">
-                <div class="panel-title">基础设施打印</div>
-                <div class="action-grid" id="build-container">
-                    </div>
-            </div>
-
-            <div class="glass-panel locked-module" id="module-tech">
-                <div class="panel-title" style="border-bottom-color: var(--theme-mystic); color: var(--theme-mystic);">深层科技树解析</div>
-                <div class="action-grid" id="tech-container">
-                    </div>
-            </div>
-
-        </div>
-
-        <div id="panel-right">
-            <div class="glass-panel">
-                <div class="panel-title">实体监控 <span id="ui-idle-pop" style="color:var(--theme-warn);">闲置: 0</span></div>
-                <div class="entity-list" id="roster-container">
-                    <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">休眠舱为空。建造基础保暖设施以唤醒实体。</div>
+            <div class="list-card">
+                <div class="card-info">
+                    <h3>拾荒机器人 <span id="lvl-bot" style="font-size: 0.8rem; color: var(--primary);">Lv.0</span></h3>
+                    <p>自动收集废木材 (+2/秒)</p>
+                    <p style="margin-top:5px; color:#ff9800;">需 50 木材, 15 零件</p>
                 </div>
-            </div>
-
-            <div class="glass-panel" style="padding: 10px;">
-                <div class="panel-title" style="margin: 5px 5px 10px 5px;">终端日志</div>
-                <div id="terminal-log"></div>
+                <button class="btn-small" onclick="Game.upgrade('bot')" id="btn-upg-bot">组装</button>
             </div>
         </div>
 
+        <div id="tab-log" class="tab-view">
+            <h2 style="font-size: 1.2rem; margin-bottom: 15px;">个人终端日志</h2>
+            <div id="log-container" style="font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #ddd;">
+                </div>
+        </div>
+
+    </div>
+
+    <div id="loot-overlay" onclick="this.style.display='none'">
+        <div class="loot-box">
+            <div style="font-size: 3rem; margin-bottom: 10px;">🎁</div>
+            <h2 style="color: var(--rare); margin-bottom: 10px;">发现战前补给箱！</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 20px;">获得了大量稀有物资！</p>
+            <div style="font-family: monospace; font-size: 1.2rem; color: #fff;">
+                +50 木材<br>+20 罐头<br>+5 零件
+            </div>
+            <p style="margin-top: 20px; font-size: 0.8rem; color: gray;">点击任意处继续</p>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="UI.switchTab('tab-scavenge', this)">
+            <div class="nav-icon">✋</div>
+            <span>拾荒</span>
+        </div>
+        <div class="nav-item" onclick="UI.switchTab('tab-camp', this)">
+            <div class="nav-icon">⛺</div>
+            <span>营地</span>
+        </div>
+        <div class="nav-item" onclick="UI.switchTab('tab-log', this)">
+            <div class="nav-icon">📟</div>
+            <span>终端</span>
+        </div>
     </div>
 
 <script>
-/**
- * 文明余烬 v5.0 - 黎明协议 (Dawn Protocol Engine)
- * 工业级 JS 架构设计，彻底解决作用域和性能问题。
- */
-
-// ================= 1. 核心配置与静态数据表 (DB) =================
-const DB = {
-    version: "5.0.1",
-    resources: {
-        'wood':  { name: '木材', color: '#8b5a2b' },
-        'food':  { name: '有机食物', color: '#10b981' },
-        'stone': { name: '石材矿物', color: '#94a3b8', locked: true }
-    },
-    seasons: [
-        { id: 'spring', name: '春季复苏', desc: '气候温和。采集类工作效率 +20%。', modFood: 1.2, modWoodConsume: 0.5 },
-        { id: 'summer', name: '夏季炎热', desc: '高温。基础消耗平稳。', modFood: 1.0, modWoodConsume: 0.2 },
-        { id: 'autumn', name: '秋季丰收', desc: '最佳采集期！食物产出 +50%。准备过冬！', modFood: 1.5, modWoodConsume: 0.8 },
-        { id: 'winter', name: '凛冬危机', desc: '极寒环境。有机物绝收，维生系统剧烈消耗木材！', modFood: 0.0, modWoodConsume: 4.0 }
-    ],
-    jobs: {
-        'idle': { name: '休眠/闲置', res: null },
-        'gatherer': { name: '采集者', res: 'food', rate: 1.2 },
-        'woodcutter': { name: '伐木工', res: 'wood', rate: 1.5 },
-        'miner': { name: '矿工', res: 'stone', rate: 0.8, reqTech: 'tools' },
-        'scholar': { name: '解析者', res: 'knowledge', rate: 0.5, reqTech: 'language' } // 特殊产出科技点
-    },
-    buildings: {
-        'campfire': { name: '基础生火装置', desc: '提供基础热源，是唤醒休眠实体的先决条件。', cost: { wood: 20 }, max: 1 },
-        'tent': { name: '简易维生舱', desc: '扩展营地容量，允许容纳更多人口 (+2)。', cost: { wood: 40 }, mult: 1.5, popAdd: 2 },
-        'storage': { name: '仓储扩容单元', desc: '将所有基础物资的存储上限提升 250。', cost: { wood: 120, stone: 50 }, mult: 1.8, reqTech: 'tools' },
-    },
-    techs: {
-        'language': { name: '神经沟通协议', desc: '解锁"解析者"职业，开始产出深层科技 Data。', cost: { wood: 50, food: 80 } },
-        'tools': { name: '基础工具矩阵', desc: '解锁"石材"资源开采与"仓储"建设。', cost: { knowledge: 30, wood: 150 }, req: 'language' }
-    },
-    names: ["Alpha-1", "Beta-X", "Nova-7", "Echo-V", "Zion-0", "Iris-9"]
-};
-
-// ================= 2. 响应式状态容器 (State) =================
-// 我们构建一个纯数据对象，便于 JSON 序列化
-let State = {
-    v: DB.version,
-    time: { tick: 0, day: 1, seasonIdx: 0, clock: 0 },
-    res: { wood: 0, food: 0, stone: 0, knowledge: 0 },
-    resMax: 100,
-    popMax: 0,
-    bld: { campfire: 0, tent: 0, storage: 0 },
-    techs: {},
-    entities: [],
-    flags: { initialAwake: false }
-};
-
-// ================= 3. 核心游戏引擎 (Engine) =================
-class GameEngine {
-    constructor() {
-        this.lastTime = performance.now();
-        this.loopId = null;
-        this.saveTimer = 0;
-        this.netRates = { wood: 0, food: 0, stone: 0 }; // 缓存每秒净产出用于UI
-    }
-
-    init() {
-        this.loadGame();
-        Renderer.init();
-        if (State.time.tick === 0) {
-            Logger.log("系统启动... 协议载入成功。请搜集碳基材料建立热源。", "sys");
-        }
-        this.loop(); // 启动心跳
-    }
-
-    loop() {
-        const now = performance.now();
-        let dt = (now - this.lastTime) / 1000;
-        this.lastTime = now;
-        if (dt > 1) dt = 1; // 后台休眠防御
-
-        // 1. 宏观时钟系统 (10秒=1天, 10天=1季)
-        State.time.clock += dt;
-        if (State.time.clock >= 10) {
-            State.time.clock -= 10;
-            State.time.day++;
-            if (State.time.day > 10) {
-                State.time.day = 1;
-                State.time.seasonIdx = (State.time.seasonIdx + 1) % 4;
-                Logger.log(`[生态警告] 进入 ${DB.seasons[State.time.seasonIdx].name}。`, "warn");
-                Renderer.updateStaticUI();
-            }
-        }
-
-        // 2. 消耗与生产结算
-        let currentSeason = DB.seasons[State.time.seasonIdx];
-        let alivePop = State.entities.filter(e => e.status === 'alive');
-        
-        // 基础消耗: 每人吃0.5, 篝火烧木头
-        let consFood = alivePop.length * 0.5 * dt;
-        let consWood = State.bld.campfire > 0 ? (1.5 * currentSeason.modWoodConsume * dt) : 0;
-        
-        let prodRates = { wood: 0, food: 0, stone: 0, knowledge: 0 };
-
-        // 实体工作产出计算
-        alivePop.forEach(e => {
-            // 饥饿判定
-            if (State.res.food < 1) {
-                e.hunger -= 3 * dt;
-                if(e.hunger <= 0) { e.hunger=0; e.hp -= 8 * dt; }
-            } else {
-                e.hunger += 10 * dt;
-                if(e.hunger > 100) e.hunger = 100;
-            }
-            if (e.hp <= 0) this.killEntity(e, "因能源枯竭而宕机");
-
-            // 产出
-            if (e.job !== 'idle' && e.hp > 20 && e.hunger > 10) {
-                let jobData = DB.jobs[e.job];
-                let amount = jobData.rate * dt;
-                if (jobData.res === 'food') amount *= currentSeason.modFood;
-                prodRates[jobData.res] += amount;
-            }
-        });
-
-        // 凛冬极寒无篝火惩罚
-        if (State.time.seasonIdx === 3 && State.res.wood === 0 && State.bld.campfire > 0) {
-            alivePop.forEach(e => { if(Math.random() < 0.2*dt) e.hp -= 15; });
-        }
-
-        // 应用数值与上限
-        this.netRates.wood = (prodRates.wood - consWood) / dt;
-        this.netRates.food = (prodRates.food - consFood) / dt;
-        this.netRates.stone = prodRates.stone / dt;
-
-        State.res.wood += prodRates.wood - consWood;
-        State.res.food += prodRates.food - consFood;
-        State.res.stone += prodRates.stone;
-        State.res.knowledge += prodRates.knowledge;
-
-        ['wood', 'food', 'stone'].forEach(r => {
-            if (State.res[r] > State.resMax) State.res[r] = State.resMax;
-            if (State.res[r] < 0) State.res[r] = 0;
-        });
-
-        // 人口自然繁衍/唤醒
-        if (State.bld.campfire > 0 && alivePop.length < State.popMax && State.res.food > 20) {
-            if (Math.random() < 0.03 * dt) this.spawnEntity();
-        }
-
-        // 自动保存 (每 10 秒)
-        this.saveTimer += dt;
-        if (this.saveTimer >= 10) { this.saveGame(true); this.saveTimer = 0; }
-
-        State.time.tick++;
-        Renderer.tickUpdate();
-
-        this.loopId = requestAnimationFrame(() => this.loop());
-    }
-
-    recalcCaps() {
-        State.popMax = (State.bld.campfire ? 2 : 0) + (State.bld.tent * DB.buildings.tent.popAdd);
-        State.resMax = 100 + (State.bld.storage * 250);
-        document.getElementById('ui-maxres').innerText = `CAP: ${State.resMax}`;
-        document.getElementById('ui-popmax').innerText = State.popMax;
-    }
-
-    spawnEntity() {
-        let name = DB.names[Math.floor(Math.random() * DB.names.length)] + "-" + Math.floor(Math.random()*99);
-        State.entities.push({ id: Date.now(), name: name, hp: 100, hunger: 100, job: 'idle', status: 'alive' });
-        Logger.log(`实体 [${name}] 已从休眠中唤醒接入网络。`, 'succ');
-        Renderer.renderEntities();
-    }
-
-    killEntity(entity, reason) {
-        entity.status = 'dead';
-        entity.job = 'idle';
-        entity.hp = 0;
-        Logger.log(`[严重警报] 实体 ${entity.name} ${reason}。`, 'danger');
-        Renderer.renderEntities();
-    }
-
-    // 存储管理
-    saveGame(isAuto = false) {
-        localStorage.setItem('civilization_embers_v5', JSON.stringify(State));
-        if(!isAuto) Logger.log("协议数据已手动覆写至本地神经元。", "sys");
-    }
-    
-    loadGame() {
-        let data = localStorage.getItem('civilization_embers_v5');
-        if (data) {
-            try { 
-                let parsed = JSON.parse(data); 
-                if(parsed.v === DB.version) {
-                    State = parsed;
-                    Logger.log("检测到历史协议，网络已重连。", "sys");
-                } else {
-                    Logger.log("存档版本过期，已执行数据清理。", "warn");
-                }
-            } catch(e) { console.error("Save corrupted"); }
-        }
-        this.recalcCaps();
-    }
-
-    resetGame() {
-        if(confirm("将永久抹除本地节点的所有进化数据！确认执行重置协议吗？")) {
-            localStorage.removeItem('civilization_embers_v5');
-            location.reload();
+    // 手机震动反馈包装函数
+    function vibrate(pattern) {
+        if ("vibrate" in navigator) {
+            navigator.vibrate(pattern);
         }
     }
-}
 
-// ================= 4. 玩家操作交互 (Actions) =================
-// 强制绑定到 window 确保 onClick 能访问
-window.Actions = {
-    manualGather(e) {
-        let gainW = 1, gainF = 1;
-        State.res.wood += gainW;
-        State.res.food += gainF;
-        
-        // 视觉特效：点击飘字
-        this.spawnFloatText(e.clientX, e.clientY, "+物资");
-        Renderer.checkUnlocks();
-        Renderer.tickUpdate();
-    },
+    // 状态管理
+    const State = {
+        res: { wood: 0, food: 0, gear: 0 },
+        bld: { water: 0, bot: 0 },
+        ticks: 0
+    };
 
-    build(bId) {
-        let bData = DB.buildings[bId];
-        let curr = State.bld[bId] || 0;
-        
-        // 扣除资源
-        for (let r in bData.cost) {
-            let cost = Math.floor(bData.cost[r] * Math.pow(bData.mult || 1, curr));
-            State.res[r] -= cost;
-        }
-        
-        State.bld[bId] = curr + 1;
-        window.Engine.recalcCaps();
-        
-        if(bId === 'campfire' && !State.flags.initialAwake) {
-            State.flags.initialAwake = true;
-            Logger.log("热源网络已建立。生态气候监控模块已激活。", "succ");
-            document.getElementById('module-climate').classList.remove('locked-module');
-            window.Engine.spawnEntity();
-            Renderer.checkUnlocks();
-        } else {
-            Logger.log(`节点建筑 [${bData.name}] 构建完成。`);
-        }
-        Renderer.renderBuildings();
-    },
-
-    research(tId) {
-        let tData = DB.techs[tId];
-        for(let r in tData.cost) { State.res[r] -= tData.cost[r]; }
-        State.techs[tId] = true;
-        Logger.log(`科研解析完成：[${tData.name}]！系统已升维。`, "mystic");
-        
-        if(tId === 'language') DB.resources.stone.locked = false;
-        
-        Renderer.checkUnlocks();
-        Renderer.renderTechs();
-        Renderer.renderEntities(); // 可能解锁了新职业下拉框
-    },
-
-    changeJob(eId, newJob) {
-        let ent = State.entities.find(x => x.id === eId);
-        if(ent && ent.status === 'alive') ent.job = newJob;
-    },
-
-    spawnFloatText(x, y, text) {
-        let el = document.createElement('div');
-        el.className = 'float-text';
-        el.innerText = text;
-        el.style.left = (x - 20 + Math.random()*40) + 'px';
-        el.style.top = (y - 20) + 'px';
-        el.style.color = 'var(--theme-accent)';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1000);
-    }
-};
-
-// ================= 5. DOM 渲染与 UI 控制 (Renderer) =================
-const Renderer = {
-    init() {
-        this.renderResourceBars();
-        this.updateStaticUI();
-        this.renderBuildings();
-        this.renderTechs();
-        this.renderEntities();
-        this.checkUnlocks();
-    },
-
-    // 高频更新（每帧）
-    tickUpdate() {
-        // 更新顶栏
-        document.getElementById('ui-day').innerText = State.time.day;
-        let alivePop = State.entities.filter(e => e.status === 'alive').length;
-        document.getElementById('ui-pop').innerText = alivePop;
-        document.getElementById('ui-tech').innerText = Math.floor(State.res.knowledge);
-        
-        let idlePop = State.entities.filter(e => e.status === 'alive' && e.job === 'idle').length;
-        document.getElementById('ui-idle-pop').innerText = `闲置: ${idlePop}`;
-
-        // 更新资源条
-        ['wood', 'food', 'stone'].forEach(r => {
-            if(DB.resources[r].locked && !State.techs['tools']) return; // 未解锁资源跳过
-            let elVal = document.getElementById(`res-val-${r}`);
-            let elFill = document.getElementById(`res-fill-${r}`);
-            let elRate = document.getElementById(`res-rate-${r}`);
-            if(elVal && elFill) {
-                let current = State.res[r] || 0;
-                elVal.innerText = `${Math.floor(current)}`;
-                elFill.style.width = `${(current / State.resMax) * 100}%`;
-                
-                // 设置速率颜色
-                let rate = window.Engine.netRates[r] || 0;
-                elRate.innerText = `${rate >= 0 ? '+' : ''}${rate.toFixed(1)}/s`;
-                elRate.className = `res-rate ${rate < 0 ? 'rate-neg' : (rate > 0 ? 'rate-pos' : '')}`;
-            }
-        });
-
-        // 脏检查：更新按钮状态（不重新生成DOM，极大提高性能）
-        this.updateBtnStates();
-        
-        // 更新实体血条
-        State.entities.forEach(e => {
-            let hpBar = document.getElementById(`hp-${e.id}`);
-            if(hpBar) {
-                hpBar.style.width = `${e.hp}%`;
-                hpBar.style.background = e.hp < 30 ? 'var(--theme-danger)' : 'var(--theme-success)';
-                document.getElementById(`hg-${e.id}`).style.width = `${e.hunger}%`;
-                if(e.status === 'dead' && !hpBar.parentElement.parentElement.classList.contains('dead')) this.renderEntities();
-            }
-        });
-    },
-
-    updateStaticUI() {
-        let s = DB.seasons[State.time.seasonIdx];
-        document.getElementById('ui-season').innerText = s.name;
-        document.getElementById('ui-season-desc').innerText = s.desc;
-    },
-
-    checkUnlocks() {
-        if(State.bld.campfire > 0) {
-            document.getElementById('module-climate').classList.remove('locked-module');
-            document.getElementById('module-tech').classList.remove('locked-module');
-        }
-        if(State.techs['tools'] && document.getElementById('res-row-stone').classList.contains('locked-module')) {
-            document.getElementById('res-row-stone').classList.remove('locked-module');
-        }
-    },
-
-    // 动态生成资源进度条结构
-    renderResourceBars() {
-        let html = '';
-        for(let r in DB.resources) {
-            let rData = DB.resources[r];
-            let isLocked = (r === 'stone' && !State.techs['tools']) ? 'locked-module' : '';
-            html += `
-                <div class="res-tracker ${isLocked}" id="res-row-${r}">
-                    <div class="res-header">
-                        <span class="res-name" style="color:${rData.color}">■ ${rData.name}</span>
-                        <span class="res-val" id="res-val-${r}">0</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fill" id="res-fill-${r}" style="background:${rData.color}"></div></div>
-                    <div class="res-rate" id="res-rate-${r}">+0.0/s</div>
-                </div>
-            `;
-        }
-        document.getElementById('res-container').innerHTML = html;
-    },
-
-    // 动态生成建筑卡片
-    renderBuildings() {
-        let html = '';
-        for(let bId in DB.buildings) {
-            let b = DB.buildings[bId];
-            if(b.reqTech && !State.techs[b.reqTech]) continue;
-            let curr = State.bld[bId] || 0;
-            if(b.max && curr >= b.max) continue;
-
-            let costHtml = '';
-            for(let r in b.cost) {
-                let costVal = Math.floor(b.cost[r] * Math.pow(b.mult || 1, curr));
-                let rName = DB.resources[r].name;
-                costHtml += `<span class="cost-item" data-res="${r}" data-val="${costVal}">${rName}:${costVal}</span>`;
-            }
-
-            html += `
-                <button class="card-btn bld-btn" data-bid="${bId}" onclick="window.Actions.build('${bId}')">
-                    <div class="card-title">${b.name} <span style="font-size:0.8rem;color:gray;float:right;">Lv.${curr}</span></div>
-                    <div class="card-desc">${b.desc}</div>
-                    <div class="card-cost">${costHtml}</div>
-                </button>
-            `;
-        }
-        document.getElementById('build-container').innerHTML = html;
-    },
-
-    // 动态生成科技卡片
-    renderTechs() {
-        let html = '';
-        let hasVisibleTech = false;
-        for(let tId in DB.techs) {
-            let t = DB.techs[tId];
-            if(State.techs[tId]) continue; // 隐藏已研究
-            if(t.req && !State.techs[t.req]) continue; // 隐藏前置未完成
+    // 核心玩法逻辑
+    const Game = {
+        init() {
+            // 绑定大按钮的触摸/点击事件，提供极佳反馈
+            const btn = document.getElementById('btn-scavenge');
             
-            hasVisibleTech = true;
-            let costHtml = '';
-            for(let r in t.cost) {
-                let rName = r === 'knowledge' ? 'Data' : DB.resources[r].name;
-                costHtml += `<span class="cost-item" data-res="${r}" data-val="${t.cost[r]}">${rName}:${t.cost[r]}</span>`;
-            }
+            // 适配移动端 touchstart 减少 300ms 延迟
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // 防止默认滚动
+                this.scavenge(e.touches[0].clientX, e.touches[0].clientY);
+                btn.style.transform = 'translateY(8px)';
+                btn.style.boxShadow = '0 0 0 var(--primary-dark), 0 5px 10px rgba(0,0,0,0.4)';
+            }, {passive: false});
 
-            html += `
-                <button class="card-btn tech-btn" data-tid="${tId}" onclick="window.Actions.research('${tId}')" style="border-left: 3px solid var(--theme-mystic);">
-                    <div class="card-title">${t.name}</div>
-                    <div class="card-desc">${t.desc}</div>
-                    <div class="card-cost">${costHtml}</div>
-                </button>
-            `;
-        }
-        if(!hasVisibleTech) html = '<div style="color:gray; font-size:0.8rem; padding:10px;">当前无可解析的数据块。</div>';
-        document.getElementById('tech-container').innerHTML = html;
-    },
-
-    // 渲染实体卡片
-    renderEntities() {
-        let container = document.getElementById('roster-container');
-        if(State.entities.length === 0) return;
-        
-        let html = '';
-        State.entities.forEach(e => {
-            let isDead = e.status === 'dead';
-            
-            // 构建可选职业
-            let jobOpts = '';
-            for(let jId in DB.jobs) {
-                let j = DB.jobs[jId];
-                if(j.reqTech && !State.techs[j.reqTech]) continue;
-                jobOpts += `<option value="${jId}" ${e.job === jId ? 'selected':''}>${j.name}</option>`;
-            }
-
-            html += `
-                <div class="entity-card ${isDead ? 'dead' : ''}">
-                    <div class="ent-header">
-                        <span class="ent-name">${isDead?'☠️':'👤'} ${e.name}</span>
-                        <span class="ent-job">${isDead ? '离线' : DB.jobs[e.job].name}</span>
-                    </div>
-                    <div style="display:flex;gap:10px;margin-bottom:8px;">
-                        <div style="flex:1;"><div style="font-size:10px;color:gray;margin-bottom:2px;">HP</div><div class="progress-track" style="height:4px;"><div id="hp-${e.id}" class="progress-fill" style="width:${e.hp}%; background:var(--theme-success);"></div></div></div>
-                        <div style="flex:1;"><div style="font-size:10px;color:gray;margin-bottom:2px;">Energy</div><div class="progress-track" style="height:4px;"><div id="hg-${e.id}" class="progress-fill" style="width:${e.hunger}%; background:var(--theme-warn);"></div></div></div>
-                    </div>
-                    <select class="ui-select" onchange="window.Actions.changeJob(${e.id}, this.value)" ${isDead?'disabled':''}>
-                        ${jobOpts}
-                    </select>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-    },
-
-    // 精细化更新按钮状态 (性能优化核心)
-    updateBtnStates() {
-        document.querySelectorAll('.bld-btn, .tech-btn').forEach(btn => {
-            let canAfford = true;
-            btn.querySelectorAll('.cost-item').forEach(span => {
-                let res = span.getAttribute('data-res');
-                let reqVal = parseInt(span.getAttribute('data-val'));
-                let currVal = State.res[res] || 0;
-                if(currVal < reqVal) {
-                    canAfford = false;
-                    span.classList.add('lack');
-                } else {
-                    span.classList.remove('lack');
-                }
+            btn.addEventListener('touchend', (e) => {
+                btn.style.transform = '';
+                btn.style.boxShadow = '';
             });
-            btn.disabled = !canAfford;
-        });
-    }
-};
 
-// ================= 6. 终端日志系统 =================
-const Logger = {
-    log(msg, type = 'sys') {
-        let box = document.getElementById('terminal-log');
-        let d = new Date();
-        let timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
-        
-        let el = document.createElement('div');
-        el.className = `log-line c-${type}`;
-        el.innerHTML = `<span class="log-time">[${timeStr}]</span> > ${msg}`;
-        
-        box.prepend(el);
-        if(box.children.length > 30) box.removeChild(box.lastChild);
-    }
-};
+            // 兼容PC点击测试
+            btn.addEventListener('mousedown', (e) => {
+                this.scavenge(e.clientX, e.clientY);
+            });
 
-// ================= 7. 系统启动 =================
-window.Engine = new GameEngine();
-window.onload = () => {
-    window.Engine.init();
-};
+            this.log("系统启动... 环境辐射值正常。");
+            setInterval(() => this.loop(), 1000);
+        },
 
+        scavenge(x, y) {
+            // 1. 基础震动反馈 (短促有力)
+            vibrate(30);
+
+            // 2. 随机收益计算
+            let woodGain = Math.floor(Math.random() * 3) + 1; // 1-3
+            let foodGain = Math.random() < 0.3 ? 1 : 0; // 30%得食物
+            let gearGain = Math.random() < 0.1 ? 1 : 0; // 10%得零件
+
+            // 3. 盲盒爆率 (5% 触发极品)
+            if (Math.random() < 0.05) {
+                vibrate([100, 50, 100, 50, 300]); // 特殊长震动
+                State.res.wood += 50; State.res.food += 20; State.res.gear += 5;
+                document.getElementById('loot-overlay').style.display = 'flex';
+                this.log(`<span style="color:var(--rare)">惊人发现！你挖出了一个战前补给箱！</span>`);
+                UI.update();
+                return;
+            }
+
+            // 普通收益应用
+            State.res.wood += woodGain;
+            State.res.food += foodGain;
+            State.res.gear += gearGain;
+
+            // 4. 视觉果汁感：屏幕飘字
+            let floatText = `+${woodGain} 木`;
+            if (foodGain) floatText += ` +${foodGain} 罐`;
+            if (gearGain) floatText += ` <span style="color:#2196F3">+${gearGain} 零件</span>`;
+            UI.spawnFloatingText(x, y, floatText);
+
+            UI.update();
+        },
+
+        upgrade(type) {
+            vibrate(50);
+            if (type === 'water' && State.res.wood >= 20 && State.res.gear >= 5) {
+                State.res.wood -= 20; State.res.gear -= 5;
+                State.bld.water++;
+                this.log("雨水收集器已升级。饮用水保障增强。");
+            } else if (type === 'bot' && State.res.wood >= 50 && State.res.gear >= 15) {
+                State.res.wood -= 50; State.res.gear -= 15;
+                State.bld.bot++;
+                this.log("一台破旧的机器人被激活，它开始自动拾取木材。");
+            }
+            UI.update();
+        },
+
+        loop() {
+            State.ticks++;
+            if (State.ticks % 10 === 0) document.getElementById('ui-day').innerText = Math.floor(State.ticks/10) + 1;
+
+            // 自动化收益
+            let woodNet = State.bld.bot * 2;
+            let foodNet = State.bld.water * 1;
+            
+            State.res.wood += woodNet;
+            State.res.food += foodNet;
+            
+            UI.update();
+        },
+
+        log(msg) {
+            const container = document.getElementById('log-container');
+            const d = new Date();
+            const time = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            const html = `<div style="margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:8px;">
+                <span style="color:var(--text-muted)">[${time}]</span> ${msg}
+            </div>`;
+            container.insertAdjacentHTML('afterbegin', html);
+        }
+    };
+
+    // 视图更新控制
+    const UI = {
+        switchTab(tabId, navElement) {
+            vibrate(15); // 切换轻震动
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            navElement.classList.add('active');
+        },
+
+        update() {
+            document.getElementById('res-wood').innerText = State.res.wood;
+            document.getElementById('res-food').innerText = State.res.food;
+            document.getElementById('res-gear').innerText = State.res.gear;
+
+            document.getElementById('lvl-water').innerText = `Lv.${State.bld.water}`;
+            document.getElementById('lvl-bot').innerText = `Lv.${State.bld.bot}`;
+
+            // 按钮置灰逻辑
+            document.getElementById('btn-upg-water').disabled = (State.res.wood < 20 || State.res.gear < 5);
+            document.getElementById('btn-upg-bot').disabled = (State.res.wood < 50 || State.res.gear < 15);
+        },
+
+        spawnFloatingText(x, y, htmlContent) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerHTML = htmlContent;
+            
+            // 随机偏移，避免重叠
+            const offsetX = (Math.random() - 0.5) * 40;
+            el.style.left = (x - 20 + offsetX) + 'px';
+            el.style.top = (y - 30) + 'px';
+            
+            // 根据内容改变颜色
+            if (htmlContent.includes('零件')) el.style.color = '#64B5F6';
+            else el.style.color = '#81C784';
+
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+    };
+
+    // 启动游戏
+    window.onload = () => {
+        Game.init();
+        UI.update();
+    };
 </script>
 </body>
 </html>
