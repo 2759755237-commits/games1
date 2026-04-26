@@ -1695,6 +1695,143 @@
     if (GameApp.Data.Stages && !GameApp.Data.Stage) {
         GameApp.Data.Stage = GameApp.Data.Stages;
     }
+    // ========================================================================
+    // [特性增强补丁 (Feature Expansion Patch)]
+    // 新增：碎片升阶(升星)系统、全属性星级倍率膨胀、兑换码福利系统
+    // ========================================================================
+
+    // 1. 初始化兑换码记录状态
+    if (!GameApp.State.Data.redeemedCodes) {
+        GameApp.State.Data.redeemedCodes = {};
+    }
+
+    // 2. 兑换码系统核心逻辑
+    GameApp.UI.openRedeemCode = function() {
+        // 使用原生的输入弹窗
+        let code = prompt("请输入神龛暗号 (兑换码)：");
+        if (!code) return;
+
+        if (code === "6699") {
+            if (GameApp.State.Data.redeemedCodes["6699"]) {
+                GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+            } else {
+                // 赐予一亿勾玉
+                GameApp.State.modifyResource('jade', 100000000);
+                GameApp.State.Data.redeemedCodes["6699"] = true;
+                GameApp.UI.toast("🎉 兑换成功！神明赐福：获得 100,000,000 勾玉！");
+            }
+        } else {
+            GameApp.UI.toast("暗号无效或已过期。", true);
+        }
+    };
+
+    // 3. 动态在顶部资源栏注入【兑换码】按钮
+    const headerResBox = document.querySelector('.res-box');
+    if (headerResBox && !document.getElementById('btn-redeem')) {
+        const redeemBtn = document.createElement('div');
+        redeemBtn.id = 'btn-redeem';
+        redeemBtn.className = 'res-item';
+        redeemBtn.style.cursor = 'pointer';
+        redeemBtn.style.background = 'linear-gradient(90deg, #d97706, #b45309)';
+        redeemBtn.style.borderColor = '#fbbf24';
+        redeemBtn.innerHTML = `🎁 <span style="color:#fff; font-size:0.9rem;">兑换码</span>`;
+        redeemBtn.onclick = GameApp.UI.openRedeemCode;
+        headerResBox.insertBefore(redeemBtn, headerResBox.firstChild);
+    }
+
+    // 4. 重写属性获取器，加入【星级膨胀系数】
+    const originalGetStats = GameApp.State.getShikigamiStats;
+    GameApp.State.getShikigamiStats = function(shikigamiId) {
+        let stats = originalGetStats.call(this, shikigamiId);
+        if (!stats) return null;
+        
+        let sData = this.Data.Shikigami[shikigamiId];
+        stats.star = sData.star || 1;
+        
+        // 【核心升阶公式】：每升一阶，所有面板属性基于当前等级的总数值额外提升 50%
+        let starMult = 1 + (stats.star - 1) * 0.5;
+        stats.atk = Math.floor(stats.atk * starMult);
+        stats.hp = Math.floor(stats.hp * starMult);
+        
+        // 升阶所需碎片公式：目标星级 * 20 (比如1升2需40片，2升3需60片)
+        stats.starUpCost = (stats.star + 1) * 20; 
+        
+        return stats;
+    };
+
+    // 5. 新增升阶业务逻辑
+    GameApp.Systems.Upgrade.starUp = function(shikigamiId) {
+        let s = GameApp.State.Data.Shikigami[shikigamiId];
+        let stats = GameApp.State.getShikigamiStats(shikigamiId);
+        if (!s || !stats) return false;
+
+        if (s.shards >= stats.starUpCost) {
+            s.shards -= stats.starUpCost;
+            s.star = (s.star || 1) + 1;
+            
+            GameApp.State.autoFormTeam(); // 属性暴涨，重新洗牌最强阵容
+            if (typeof GameApp.UI !== 'undefined') {
+                GameApp.UI.renderRoster();
+                GameApp.UI.updateDPS();
+            }
+            GameApp.UI.toast(`✨ 觉醒成功！达到了 ${s.star} 阶！灵力暴涨！`);
+            return true;
+        } else {
+            GameApp.UI.toast(`碎片不足，需要 ${stats.starUpCost} 个碎片。继续召唤吧！`, true);
+            return false;
+        }
+    };
+
+    // 6. 重写式神录UI渲染，加入【升阶按钮】和【星级展示】
+    GameApp.UI.renderRoster = function() {
+        const container = document.getElementById('ui-roster-list');
+        let owned = [];
+        for (let id in GameApp.State.Data.Shikigami) {
+            owned.push(GameApp.State.getShikigamiStats(id));
+        }
+        
+        owned.sort((a, b) => b.atk - a.atk); // 按攻击力排序
+        let html = '';
+        const currentCoins = GameApp.State.Data.Resources.coins;
+
+        owned.forEach(s => {
+            let isMax = s.isMaxLevel;
+            let canLevelUp = currentCoins >= s.upgradeCost;
+            let canStarUp = s.shards >= s.starUpCost;
+            
+            // 绘制星星图标
+            let starsHtml = '<span style="color:#fbbf24; font-size:0.7rem;">' + '★'.repeat(s.star) + '</span>';
+
+            // 升级按钮
+            let btnLevelHtml = isMax 
+                ? `<button class="btn-upgrade" disabled style="background:#444;">满级</button>`
+                : `<button class="btn-upgrade" ${canLevelUp ? '' : 'disabled'} onclick="GameApp.Systems.Upgrade.levelUp('${s.id}')">强化<br><span style="font-size:0.6rem; color:${canLevelUp?'#facc15':'#ef4444'}">🪙 ${GameApp.Utils.formatNumber(s.upgradeCost)}</span></button>`;
+            
+            // 升阶按钮
+            let btnStarHtml = `<button class="btn-upgrade" ${canStarUp ? '' : 'disabled'} onclick="GameApp.Systems.Upgrade.starUp('${s.id}')" style="background:${canStarUp?'#c084fc':'#444'};">觉醒<br><span style="font-size:0.6rem; color:${canStarUp?'#fff':'#ef4444'}">🧩 ${s.shards}/${s.starUpCost}</span></button>`;
+
+            html += `
+                <div class="shikigami-card">
+                    <div class="s-avatar r-${s.rarity}">${s.icon}</div>
+                    <div class="s-info">
+                        <div class="s-name">${s.name} <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">Lv.${s.level}</span> ${starsHtml}</div>
+                        <div class="s-stats">
+                            灵力: <span>${GameApp.Utils.formatNumber(s.atk)}</span> | 碎片: <span>${s.shards}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:5px; flex-direction:column;">
+                        ${btnLevelHtml}
+                        ${btnStarHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        if (owned.length === 0) {
+            html = `<div style="text-align:center; padding: 40px; color: var(--text-muted);">空空如也，请前往召唤。</div>`;
+        }
+        container.innerHTML = html;
+    };
 </script>
 </body>
 </html>
