@@ -3,553 +3,731 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文明余烬: 群星版 - 深度生存模拟</title>
+    <title>文明余烬：纪元觉醒 (Ultimate Edition)</title>
     <style>
-        /* 工业级暗黑风 UI 变量 */
+        /* ================= 工业级 UI 系统 ================= */
         :root {
-            --bg: #0d0d12; --panel-bg: #15151c; --card-bg: #1f1f28; --border: #2c2c3a;
-            --text-main: #e2e2e8; --text-muted: #808090; --accent: #ffb86c; 
-            --hp: #ff5555; --hunger: #f1fa8c; --exp: #8be9fd; --danger: #ff5555; --safe: #50fa7b;
+            --bg: #0b0b0e; --panel-bg: #14141a; --border: #2a2a35; --border-light: #3e3e4f;
+            --text-main: #d1d1d6; --text-muted: #737385; 
+            --accent: #d4af37; --accent-hover: #f1c40f;
+            --hp: #e74c3c; --stamina: #3498db; --knowledge: #9b59b6; --food: #2ecc71;
+            --season-spring: #a2d9ce; --season-summer: #f9e79f; --season-autumn: #e67e22; --season-winter: #85c1e9;
         }
         * { box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text-main); font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 10px; font-size: 14px; display: flex; justify-content: center; user-select: none;}
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        body { background: var(--bg); color: var(--text-main); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
         
-        #game-wrapper { display: grid; grid-template-columns: 280px 1fr 320px; gap: 15px; width: 100%; max-width: 1400px; height: 95vh; }
-        .panel { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-        .panel-header { background: #1a1a24; padding: 12px; border-bottom: 1px solid var(--border); font-weight: bold; color: var(--accent); display: flex; justify-content: space-between; align-items: center; }
-        .panel-content { padding: 12px; overflow-y: auto; flex: 1; }
+        /* 顶部状态栏 & 季节 */
+        #top-bar { background: #0f0f13; border-bottom: 2px solid var(--border); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; z-index: 100; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .season-indicator { font-size: 1.2rem; font-weight: bold; padding: 5px 15px; border-radius: 4px; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .global-stats { display: flex; gap: 20px; font-family: monospace; font-size: 1.1rem; }
+        .stat-item { display: flex; align-items: center; gap: 8px; }
 
-        /* 全局顶栏状态 */
-        #top-bar { grid-column: 1 / -1; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-        .stat-group { display: flex; gap: 20px; }
-        .stat-item { display: flex; align-items: center; gap: 8px; font-weight: bold; }
-        .stat-val { font-family: monospace; font-size: 1.1em; }
+        /* 标签页导航 */
+        #nav-tabs { display: flex; background: #1a1a22; border-bottom: 1px solid var(--border); padding: 0 20px; }
+        .tab-btn { background: transparent; color: var(--text-muted); border: none; padding: 15px 25px; font-size: 1rem; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; font-weight: bold; }
+        .tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(212, 175, 55, 0.05); }
 
-        /* 按钮与交互 */
-        button { background: #22222d; color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; width: 100%; margin-bottom: 8px; text-align: left; position: relative; font-family: inherit; }
-        button:hover:not(:disabled) { background: #2d2d3b; border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        button:active:not(:disabled) { transform: translateY(1px); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn-cost { float: right; font-size: 0.85em; color: var(--text-muted); }
-
-        /* 村民精细化卡片 (UI核心升级) */
-        .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-        .villager-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; transition: 0.3s; position: relative; overflow: hidden; }
-        .villager-card.dead { filter: grayscale(100%); opacity: 0.5; }
-        .v-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed var(--border); padding-bottom: 5px; }
-        .v-avatar { width: 36px; height: 36px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid var(--border); }
-        .v-info { flex: 1; margin-left: 10px; }
-        .v-name { font-weight: bold; font-size: 1.1em; color: #fff; }
-        .v-trait { font-size: 0.75em; padding: 2px 4px; background: rgba(255,184,108,0.2); color: var(--accent); border-radius: 3px; display: inline-block; margin-top: 2px;}
+        /* 主体布局 */
+        #main-container { display: flex; flex: 1; overflow: hidden; }
         
-        /* 状态条 */
-        .bar-container { height: 6px; background: #111; border-radius: 3px; margin: 4px 0; overflow: hidden; position: relative; }
-        .bar-fill { height: 100%; transition: width 0.3s; }
-        .bar-hp { background: var(--hp); }
-        .bar-hunger { background: var(--hunger); }
-        .v-stats-text { font-size: 0.75em; color: var(--text-muted); display: flex; justify-content: space-between; }
+        /* 左侧资源侧边栏 */
+        #resource-sidebar { width: 260px; background: var(--panel-bg); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+        .res-group { margin-bottom: 20px; }
+        .res-group-title { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; border-bottom: 1px dashed var(--border); margin-bottom: 10px; padding-bottom: 5px; }
+        .res-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-family: monospace; font-size: 1.05rem; }
+        .res-limit { color: var(--text-muted); font-size: 0.8em; }
+        .res-rate { font-size: 0.8em; text-align: right; }
+        .rate-pos { color: var(--food); } .rate-neg { color: var(--hp); }
 
-        /* 职业与装备分配 */
-        .v-controls { display: flex; gap: 5px; margin-top: 8px; }
-        .job-select, .equip-select { background: #111; color: var(--text-main); border: 1px solid var(--border); border-radius: 3px; padding: 4px; flex: 1; font-size: 0.8em; }
+        /* 动态内容区 */
+        #content-area { flex: 1; padding: 25px; overflow-y: auto; position: relative; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        h2 { color: var(--accent); margin-top: 0; margin-bottom: 20px; font-weight: 300; letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+        /* 通用网格布局 */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
         
-        /* 战斗预警 UI */
-        #threat-bar-container { width: 150px; height: 10px; background: #111; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
-        #threat-bar { height: 100%; background: var(--danger); width: 0%; transition: 0.5s; }
-        .raid-warning { animation: pulseBg 1s infinite alternate; }
-        @keyframes pulseBg { from { background-color: rgba(255,85,85,0.1); } to { background-color: rgba(255,85,85,0.3); } }
+        /* 动作/建筑/科技 卡片 */
+        .action-card { background: #1c1c24; border: 1px solid var(--border); border-radius: 6px; padding: 15px; transition: 0.2s; position: relative; overflow: hidden; }
+        .action-card:hover:not(.locked) { border-color: var(--border-light); box-shadow: 0 4px 10px rgba(0,0,0,0.3); transform: translateY(-2px); }
+        .action-card.locked { opacity: 0.5; filter: grayscale(100%); }
+        .action-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: #fff; }
+        .action-desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; height: 35px; }
+        
+        button.btn-do { background: #2a2a35; color: var(--text-main); border: 1px solid var(--border-light); padding: 8px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.2s; }
+        button.btn-do:hover:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); }
+        button.btn-do:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .cost-list { font-size: 0.85rem; color: #aaa; margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .cost-item.afford { color: var(--food); } .cost-item.poor { color: var(--hp); }
 
-        /* 日志 */
-        #log { font-family: 'Consolas', monospace; font-size: 0.9em; line-height: 1.4; display: flex; flex-direction: column; }
-        .log-line { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; word-wrap: break-word;}
-        .log-time { color: var(--text-muted); margin-right: 5px; }
-        .log-sys { color: var(--accent); } .log-combat { color: var(--danger); } .log-success { color: var(--safe); }
+        /* 人物卡片升级版 */
+        .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .villager-card { background: #1a1a22; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; padding: 12px; }
+        .v-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .v-name { font-size: 1.1rem; font-weight: bold; }
+        .v-status { font-size: 0.8rem; padding: 2px 6px; background: rgba(0,0,0,0.5); border-radius: 3px; }
+        .v-bars { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+        .bar-bg { width: 100%; height: 6px; background: #000; border-radius: 3px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: 0.5s; }
+        .v-controls select { background: #111; color: #eee; border: 1px solid var(--border); padding: 5px; border-radius: 3px; width: 100%; margin-top: 5px; font-size: 0.9rem;}
+
+        /* 悬浮通知系统 (Toast) */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; pointer-events: none; }
+        .toast { background: rgba(26, 26, 34, 0.95); border: 1px solid var(--border-light); color: #fff; padding: 12px 20px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 350px; font-size: 0.95rem; border-left: 4px solid var(--accent); }
+        .toast.sys { border-left-color: var(--stamina); } .toast.danger { border-left-color: var(--hp); } .toast.success { border-left-color: var(--food); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+        /* 科技树连线占位与特殊样式 */
+        .tech-card { border-top: 3px solid var(--knowledge); }
+        .tech-researched { border-color: var(--food) !important; background: rgba(46, 204, 113, 0.05); }
     </style>
 </head>
 <body>
 
-<div id="game-wrapper">
-    <div id="top-bar">
-        <div class="stat-group">
-            <div class="stat-item">📅 天数: <span class="stat-val" id="ui-day">1</span></div>
-            <div class="stat-item">🕒 时间: <span class="stat-val" id="ui-time">08:00</span></div>
-            <div class="stat-item">👥 人口: <span class="stat-val"><span id="ui-pop">0</span>/<span id="ui-popmax">0</span></span></div>
+<div id="top-bar">
+    <div id="season-display" class="season-indicator" style="color: var(--season-spring);">🌱 春季 (第1年)</div>
+    <div class="global-stats">
+        <div class="stat-item" title="保存进度">
+            <button onclick="Game.saveGame()" style="background:#222; border:1px solid #444; color:#fff; padding:4px 10px; border-radius:4px; cursor:pointer;">💾 保存</button>
+            <button onclick="Game.resetGame()" style="background:#422; border:1px solid #633; color:#fff; padding:4px 10px; border-radius:4px; cursor:pointer;">🔄 重置</button>
         </div>
-        <div class="stat-group">
-            <div class="stat-item" title="进度满时触发野兽袭击" style="color:var(--danger)">
-                ⚔️ 营地威胁: 
-                <div id="threat-bar-container"><div id="threat-bar"></div></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-header">仓库与后勤</div>
-        <div class="panel-content">
-            <h3 style="margin-top:0">物资储备</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                <div class="stat-item">🪵木材: <span id="res-wood" class="stat-val">0</span></div>
-                <div class="stat-item">🍖食物: <span id="res-food" class="stat-val">0</span></div>
-                <div class="stat-item">🪨石头: <span id="res-stone" class="stat-val">0</span></div>
-                <div class="stat-item">🦴兽骨: <span id="res-bone" class="stat-val">0</span></div>
-            </div>
-
-            <h3>基础设施</h3>
-            <button onclick="Core.manualAction('gather')" id="btn-manual">徒手拾荒 <span class="btn-cost">体力活</span></button>
-            <button onclick="Core.build('fire')" id="btn-bld-fire">生起篝火 <span class="btn-cost">20 木材</span></button>
-            <button onclick="Core.build('tent')" id="btn-bld-tent" class="hidden">搭建帐篷 <span class="btn-cost">木材:<span id="cost-tent">30</span></span></button>
-            <button onclick="Core.build('workbench')" id="btn-bld-wb" class="hidden">简易工作台 <span class="btn-cost">50木 20石</span></button>
-            
-            <div id="crafting-section" class="hidden">
-                <h3>装备制造</h3>
-                <button onclick="Core.craft('stoneAxe')">打造 石斧 (伐木效率+)<span class="btn-cost">10木 15石</span></button>
-                <button onclick="Core.craft('boneSpear')">打造 骨矛 (战斗力+)<span class="btn-cost">15木 10骨</span></button>
-                <div style="font-size:0.8em; color:var(--text-muted); margin-top:10px;">库存装备: <span id="ui-eq-axe">0</span>把石斧, <span id="ui-eq-spear">0</span>把骨矛</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="panel" style="grid-column: 2 / 3;">
-        <div class="panel-header">营地成员调度 <span style="font-size:0.8em; font-weight:normal;">(村民按职业自动工作)</span></div>
-        <div class="panel-content" style="background:#0f0f14;">
-            <div id="roster" class="roster-grid">
-                </div>
-            <div id="roster-empty" style="text-align:center; padding: 40px; color: var(--text-muted);">
-                营地空无一人。生起篝火可能会吸引流浪者。
-            </div>
-        </div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-header">世界回响</div>
-        <div class="panel-content" style="display:flex; flex-direction:column; background:#0a0a0c;">
-            <div id="log" style="flex:1; overflow-y:auto; overflow-x:hidden;"></div>
-        </div>
+        <div class="stat-item">👥 人口: <span id="ui-pop">0</span>/<span id="ui-popmax">0</span></div>
+        <div class="stat-item" style="color: var(--knowledge);">🧠 知识: <span id="ui-knowledge">0</span></div>
     </div>
 </div>
 
+<div id="nav-tabs">
+    <button class="tab-btn active" onclick="UI.switchTab('tab-camp')">⛺ 营地概况</button>
+    <button class="tab-btn" onclick="UI.switchTab('tab-people')" id="nav-people" style="display:none;">👥 内政与人口</button>
+    <button class="tab-btn" onclick="UI.switchTab('tab-tech')" id="nav-tech" style="display:none;">🌌 科技与研究</button>
+    <button class="tab-btn" onclick="UI.switchTab('tab-world')" id="nav-world" style="display:none;">🗺️ 世界探索</button>
+</div>
+
+<div id="main-container">
+    <div id="resource-sidebar">
+        <div class="res-group">
+            <div class="res-group-title">基础生存物资</div>
+            <div class="res-row">🪵 木材 <span id="res-wood">0</span></div>
+            <div class="res-rate" id="rate-wood"></div>
+            <div class="res-row">🍖 食物 <span id="res-food">0</span></div>
+            <div class="res-rate" id="rate-food"></div>
+            <div class="res-row" id="row-stone" style="display:none;">🪨 石头 <span id="res-stone">0</span></div>
+            <div class="res-rate" id="rate-stone"></div>
+        </div>
+        
+        <div class="res-group" id="grp-storage" style="display:none;">
+            <div class="res-group-title">仓储容量</div>
+            <div class="res-row" style="font-size:0.9rem;">基础物资上限 <span id="res-max">100</span></div>
+        </div>
+    </div>
+
+    <div id="content-area">
+        
+        <div id="tab-camp" class="tab-content active">
+            <h2>荒野求生</h2>
+            <div class="grid-container" id="camp-actions">
+                <div class="action-card">
+                    <div class="action-title">拾荒</div>
+                    <div class="action-desc">在附近搜集散落的树枝和果实。</div>
+                    <button class="btn-do" onclick="Game.manualAction('gather')">徒手搜集</button>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 40px;">营地建设</h2>
+            <div class="grid-container" id="building-list">
+                </div>
+        </div>
+
+        <div id="tab-people" class="tab-content">
+            <h2>劳动力调度</h2>
+            <p style="color:var(--text-muted); margin-top:-10px; margin-bottom:20px;">村民会根据你分配的职业自动工作。注意保持食物充足，冬天注意保暖。</p>
+            <div class="roster-grid" id="roster-list">
+                </div>
+        </div>
+
+        <div id="tab-tech" class="tab-content">
+            <h2>文明火种</h2>
+            <p style="color:var(--text-muted); margin-top:-10px; margin-bottom:20px;">指派村民成为“学者”以产出知识。知识是推动时代进步的唯一动力。</p>
+            <div class="grid-container" id="tech-list">
+                </div>
+        </div>
+
+        <div id="tab-world" class="tab-content">
+            <h2>迷雾地图</h2>
+            <div style="background: rgba(0,0,0,0.3); border: 1px dashed #555; padding: 40px; text-align: center; color: #888; border-radius: 8px;">
+                <p>雷达显示周边有未知的废墟信号...</p>
+                <button class="btn-do" style="width:200px; margin:auto;" onclick="Game.exploreEvent()" id="btn-explore">派遣探索队 (耗时10秒)</button>
+                <div id="explore-prog-bg" style="width:200px; height:4px; background:#000; margin:10px auto; border-radius:2px; display:none;"><div id="explore-prog" style="height:100%; width:0%; background:var(--accent);"></div></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
 <script>
 /**
- * 核心引擎：文明余烬 - 群星版
- * 采用模块化类结构设计，支持轻松扩展成数万行的项目
+ * 终极版游戏引擎 (v4.0 SPA Architecture)
+ * 包含了：季节引擎、科技树图谱、实体AI、仓储限制、数据持久化。
  */
 
-// ================= 数据字典与配置 =================
-const CONFIG = {
-    names: ["阿土", "铁柱", "飞鸟", "冬雨", "孤狼", "残叶", "老木", "猎鹰", "黑岩", "白雪"],
-    traits: [
-        { id: 'strong', name: '天生神力', desc: '最大HP+20, 战斗力加成', hpMod: 20, combatMod: 1.5 },
-        { id: 'glutton', name: '暴食者', desc: '饥饿速度翻倍, 但工作效率+20%', hungerMod: 2, workMod: 1.2 },
-        { id: 'survivor', name: '求生专家', desc: '饥饿速度减慢, 自愈快', hungerMod: 0.6, healMod: 2 },
-        { id: 'frail', name: '身娇肉贵', desc: '最大HP-20, 容易受伤', hpMod: -20, combatMod: 0.8 }
+// ================= 1. 核心配置与数据库 (Data Dictionary) =================
+const DB = {
+    seasons: [
+        { id: 'spring', name: '春季', color: 'var(--season-spring)', desc: '万物复苏。食物采集效率 +20%。', modFood: 1.2, modWoodConsume: 0.5 },
+        { id: 'summer', name: '夏季', color: 'var(--season-summer)', desc: '天气炎热。工作消耗略微增加。', modFood: 1.0, modWoodConsume: 0.2 },
+        { id: 'autumn', name: '秋季', color: 'var(--season-autumn)', desc: '丰收之季。食物采集效率 +50%。准备过冬！', modFood: 1.5, modWoodConsume: 0.8 },
+        { id: 'winter', name: '冬季', color: 'var(--season-winter)', desc: '极寒！没有农业产出，取暖剧烈消耗木材！', modFood: 0.2, modWoodConsume: 3.0 }
     ],
     jobs: {
-        'idle': { name: '游荡', res: null },
-        'lumber': { name: '伐木工', res: 'wood', baseRate: 0.5 }, // 每秒产出
-        'hunter': { name: '猎人', res: 'food', baseRate: 0.8, secondary: 'bone', secChance: 0.2 },
-        'miner': { name: '矿工', res: 'stone', baseRate: 0.3 },
-        'guard': { name: '守卫', res: null } // 不生产，专职降低袭击威胁
+        'idle': { name: '闲置', desc: '无所事事，消耗食物。' },
+        'gatherer': { name: '采集者', desc: '寻找食物。', res: 'food', rate: 0.8 },
+        'woodcutter': { name: '伐木工', desc: '砍伐木材。', res: 'wood', rate: 1.0 },
+        'miner': { name: '矿工', desc: '开采石头。', res: 'stone', rate: 0.5, reqTech: 'tools' },
+        'scholar': { name: '学者', desc: '冥想产生知识。', res: 'knowledge', rate: 0.2, reqTech: 'language' }
     },
-    items: {
-        'none': { name: '徒手', toolMod: 1, combat: 1 },
-        'stoneAxe': { name: '石斧', type: 'tool', toolMod: 2.5, combat: 2, jobMatch: 'lumber' },
-        'boneSpear': { name: '骨矛', type: 'weapon', toolMod: 1.2, combat: 6, jobMatch: 'hunter' }
-    }
+    buildings: {
+        'campfire': { name: '生起篝火', desc: '驱散黑暗。吸引流浪者的基础。', cost: { wood: 20 }, max: 1 },
+        'tent': { name: '简易帐篷', desc: '人口上限 +2。', cost: { wood: 30 }, mult: 1.5, popAdd: 2 },
+        'storage': { name: '物资仓库', desc: '提升所有基础资源储备上限 200。', cost: { wood: 100, stone: 20 }, mult: 1.8, reqTech: 'tools' },
+        'hut': { name: '木屋', desc: '人口上限 +4，比帐篷更保暖。', cost: { wood: 150, stone: 50 }, mult: 1.4, popAdd: 4, reqTech: 'construction' }
+    },
+    techs: {
+        'language': { name: '语言沟通', desc: '解锁"学者"职业与"知识"资源。', cost: { wood: 50, food: 50 } },
+        'tools': { name: '基础工具', desc: '解锁"矿工"职业与"仓库"建设。', cost: { knowledge: 20, wood: 100 }, req: 'language' },
+        'construction': { name: '建筑学', desc: '允许建造坚固的"木屋"。', cost: { knowledge: 50, stone: 100 }, req: 'tools' },
+        'exploration': { name: '星图制图', desc: '解锁"世界探索"面板。', cost: { knowledge: 100, food: 300 }, req: 'tools' }
+    },
+    names: ["艾伦", "三笠", "阿尔敏", "让", "萨莎", "康尼", "莱纳", "贝尔托特", "阿妮", "尤弥尔", "希斯特利亚"]
 };
 
-// ================= 核心状态管理 =================
-const State = {
-    time: { day: 1, tick: 0, clock: 8 * 3600 }, // clock按秒算，8:00起
-    res: { wood: 0, food: 0, stone: 0, bone: 0 },
-    inventory: { stoneAxe: 0, boneSpear: 0 },
-    bld: { fire: false, tent: 0, workbench: false },
-    villagers: [],
-    threat: 0,     // 威胁值 (0-100)
-    raidCount: 0,
-    isRaidActive: false
-};
+// ================= 2. 全局状态存储 (State Management for Save/Load) =================
+// 我们将所有可变数据放入一个对象，方便 JSON 序列化
+let State = getDefaultState();
 
-// ================= 村民实体类 =================
+function getDefaultState() {
+    return {
+        v: 1, // 存档版本控制
+        time: { ticks: 0, day: 1, seasonIdx: 0, dayTimer: 0 },
+        res: { wood: 0, food: 0, stone: 0, knowledge: 0 },
+        resMax: 100, // 初始上限
+        popMax: 0,
+        bld: { campfire: 0, tent: 0, storage: 0, hut: 0 },
+        techs: {}, // { 'language': true }
+        villagers: [], // Array of entities
+        flags: { mapUnlocked: false },
+        exploreTimer: 0
+    };
+}
+
 class Villager {
-    constructor(id) {
-        this.id = id;
-        this.name = CONFIG.names[Math.floor(Math.random() * CONFIG.names.length)];
-        
-        // 分配特质
-        this.trait = CONFIG.traits[Math.floor(Math.random() * CONFIG.traits.length)];
-        
-        // 动态属性计算
-        this.maxHp = 100 + (this.trait.hpMod || 0);
-        this.hp = this.maxHp;
-        this.maxHunger = 100;
-        this.hunger = 80; // 初始较饿
-        
+    constructor() {
+        this.id = 'v_' + Math.random().toString(36).substr(2, 9);
+        this.name = DB.names[Math.floor(Math.random() * DB.names.length)];
+        this.hp = 100; this.maxHp = 100;
+        this.hunger = 100; this.maxHunger = 100;
         this.job = 'idle';
-        this.equip = 'none';
-        this.status = '存活'; // 存活, 濒死, 死亡
-    }
-
-    // 每个逻辑帧的独立 AI 判定
-    tick(dt) {
-        if (this.status === '死亡') return;
-
-        // 1. 饥饿度判定 (基础每秒掉 0.5)
-        let hungerDrop = 0.5 * (this.trait.hungerMod || 1) * dt;
-        this.hunger -= hungerDrop;
-
-        // 2. 进食逻辑 (饿了自动找仓库吃)
-        if (this.hunger < 40 && State.res.food >= 1) {
-            State.res.food -= 1;
-            this.hunger += 40; 
-            if(this.hunger > this.maxHunger) this.hunger = this.maxHunger;
-        }
-
-        // 3. 生存/死亡惩罚
-        if (this.hunger <= 0) {
-            this.hunger = 0;
-            this.hp -= 2 * dt; // 饿掉血
-        } else if (this.hunger > 60 && this.hp < this.maxHp) {
-            this.hp += 0.5 * (this.trait.healMod || 1) * dt; // 吃饱回血
-        }
-
-        if (this.hp <= 0) {
-            this.hp = 0;
-            this.die("被饥饿与恶劣环境夺去了生命");
-            return;
-        }
-
-        // 4. 执行本职工作产出
-        this.work(dt);
-    }
-
-    work(dt) {
-        if (this.hunger <= 10) return; // 太饿罢工
-        const jobInfo = CONFIG.jobs[this.job];
-        if (!jobInfo || !jobInfo.res) return;
-
-        // 计算效率乘区: 基础 * 特质 * 装备
-        let mult = (this.trait.workMod || 1);
-        let eqInfo = CONFIG.items[this.equip];
-        if (eqInfo.jobMatch === this.job || eqInfo.jobMatch === 'all') {
-            mult *= eqInfo.toolMod;
-        }
-
-        // 产出核心资源
-        State.res[jobInfo.res] += jobInfo.baseRate * mult * dt;
-        
-        // 产出副产物 (如猎人打骨头)
-        if (jobInfo.secondary && Math.random() < (jobInfo.secChance * dt)) {
-            State.res[jobInfo.secondary] += 1;
-        }
-    }
-
-    getCombatPower() {
-        if (this.status === '死亡' || this.hp < 20) return 0;
-        let base = 5 * (this.trait.combatMod || 1);
-        let weaponMult = CONFIG.items[this.equip].combat || 1;
-        return base * weaponMult;
-    }
-
-    die(reason) {
-        this.status = '死亡';
-        this.job = 'idle';
-        if(this.equip !== 'none') {
-            State.inventory[this.equip]++; // 遗物掉落仓库
-            this.equip = 'none';
-        }
-        UI.log(`💀 [噩耗] ${this.name} ${reason}。`, 'log-combat');
-        UI.renderRoster(); // 强制重绘
+        this.status = 'healthy';
     }
 }
 
-// ================= 系统核心引擎 =================
-const Core = {
-    lastTick: Date.now(),
+// ================= 3. 核心逻辑引擎 (The Game Loop) =================
+const Game = {
     loopId: null,
-
+    lastTime: Date.now(),
+    saveTimer: 0,
+    
     init() {
-        UI.log("你从荒野中苏醒。为了活下去，你必须建立营地。", "log-sys");
+        this.loadGame();
+        UI.initRenders();
+        UI.updateAll();
+        if (State.time.ticks === 0) {
+            Toast.show("你从一片废墟中醒来。寒风刺骨，你需要立刻收集物资生火。", "sys");
+        }
         this.loopId = requestAnimationFrame(() => this.loop());
     },
 
     loop() {
         const now = Date.now();
-        const dt = (now - this.lastTick) / 1000;
-        this.lastTick = now;
+        let dt = (now - this.lastTime) / 1000;
+        if (dt > 1) dt = 1; // 防止离线时间过长导致单帧数值爆炸（离线收益应单独计算，此处简化）
+        this.lastTime = now;
 
-        // 1. 时间流逝处理
-        State.time.clock += dt * 60; // 游戏1秒 = 现实1分钟
-        if (State.time.clock >= 24 * 3600) {
-            State.time.clock = 0;
+        // 1. 时间与季节流逝 (1天 = 10秒现实时间，1季 = 10天)
+        State.time.dayTimer += dt;
+        if (State.time.dayTimer >= 10) {
+            State.time.dayTimer -= 10;
             State.time.day++;
-            UI.log(`🌅 第 ${State.time.day} 天降临了。`, 'log-success');
+            if (State.time.day > 10) {
+                State.time.day = 1;
+                State.time.seasonIdx = (State.time.seasonIdx + 1) % 4;
+                let s = DB.seasons[State.time.seasonIdx];
+                Toast.show(`季风转换。进入 ${s.name}。${s.desc}`, "sys");
+                UI.updateSeasonInfo();
+            }
         }
 
-        // 2. 实体 AI 结算
-        State.villagers.forEach(v => v.tick(dt));
+        let currentSeason = DB.seasons[State.time.seasonIdx];
 
-        // 3. 威胁与事件系统 (有篝火才触发)
-        if (State.bld.fire && !State.isRaidActive) {
-            // 计算守卫减免
-            let guardPower = 0;
-            State.villagers.forEach(v => { if(v.job === 'guard' && v.hp > 20) guardPower += v.getCombatPower(); });
+        // 2. 宏观消耗计算
+        let popCount = State.villagers.filter(v => v.status !== 'dead').length;
+        let foodCons = popCount * 0.4 * dt; // 每人每秒吃0.4食物
+        let woodCons = 0;
+        
+        // 篝火保暖消耗
+        if (State.bld.campfire > 0) {
+            woodCons = 1 * currentSeason.modWoodConsume * dt; 
+        }
+
+        // 3. AI实体产出结算
+        let resRates = { wood: -woodCons, food: -foodCons, stone: 0, knowledge: 0 };
+        
+        State.villagers.forEach(v => {
+            if (v.status === 'dead') return;
             
-            // 威胁自然增长 (天数越多，涨得越快，守卫可压制)
-            let threatInc = (0.2 + State.time.day * 0.05) - (guardPower * 0.02);
-            if(threatInc < 0) threatInc = 0;
-            State.threat += threatInc * dt;
+            // 实体生存衰减
+            if (State.res.food < 1) {
+                v.hunger -= 2 * dt;
+                if (v.hunger <= 0) { v.hunger = 0; v.hp -= 5 * dt; }
+            } else {
+                v.hunger += 5 * dt;
+                if (v.hunger > v.maxHunger) v.hunger = v.maxHunger;
+            }
+            if (v.hp <= 0) this.killVillager(v, "饿死/冻死了");
 
-            if (State.threat >= 100) this.triggerRaid();
+            // 工作产出
+            if (v.job !== 'idle' && v.hp > 20 && v.hunger > 20) {
+                let jobInfo = DB.jobs[v.job];
+                let amt = jobInfo.rate * dt;
+                if (jobInfo.res === 'food') amt *= currentSeason.modFood;
+                resRates[jobInfo.res] += amt;
+            }
+        });
+
+        // 4. 应用数值并限制上限
+        for (let r in resRates) {
+            State.res[r] += resRates[r];
+            // 上限判定 (知识除外)
+            if (r !== 'knowledge') {
+                if (State.res[r] > State.resMax) State.res[r] = State.resMax;
+                if (State.res[r] < 0) State.res[r] = 0;
+            }
         }
 
-        // 4. 招募系统 (随机流浪者)
-        let alivePop = State.villagers.filter(v=>v.status!=='死亡').length;
-        let maxPop = (State.bld.fire ? 1 : 0) + State.bld.tent * 2;
-        if (State.bld.fire && alivePop < maxPop && State.res.food >= 10) {
-            if (Math.random() < 0.02 * dt) this.recruitVillager();
+        // 饥荒与严寒的极端惩罚
+        if (State.res.wood === 0 && State.bld.campfire > 0 && currentSeason.id === 'winter') {
+            State.villagers.forEach(v => { if (Math.random() < 0.1 * dt) v.hp -= 10; }); // 冬天断木头集体掉血
         }
 
-        UI.update(dt);
+        // 5. 人口自然增长 (有篝火且有余粮有空间)
+        if (State.bld.campfire > 0 && popCount < State.popMax && State.res.food > 20) {
+            if (Math.random() < 0.05 * dt) this.spawnVillager();
+        }
+
+        // 6. 探索进度处理
+        if (State.exploreTimer > 0) {
+            State.exploreTimer -= dt;
+            let el = document.getElementById('explore-prog');
+            if (el) el.style.width = ((10 - State.exploreTimer) / 10 * 100) + '%';
+            
+            if (State.exploreTimer <= 0) {
+                State.exploreTimer = 0;
+                document.getElementById('explore-prog-bg').style.display = 'none';
+                document.getElementById('btn-explore').disabled = false;
+                this.resolveExplore();
+            }
+        }
+
+        // 7. 自动存档 (每 15 秒)
+        this.saveTimer += dt;
+        if (this.saveTimer >= 15) {
+            this.saveGame(true);
+            this.saveTimer = 0;
+        }
+
+        State.time.ticks++;
+        UI.updateTick(resRates);
+        
         this.loopId = requestAnimationFrame(() => this.loop());
     },
 
     manualAction(type) {
-        if(type === 'gather') {
+        if (type === 'gather') {
             State.res.wood += 1;
-            if(Math.random() < 0.3) State.res.food += 1;
-            if(Math.random() < 0.1) State.res.stone += 1;
+            State.res.food += 1;
+            UI.checkUnlocks();
         }
     },
 
-    build(type) {
-        if (type === 'fire' && State.res.wood >= 20 && !State.bld.fire) {
-            State.res.wood -= 20;
-            State.bld.fire = true;
-            document.getElementById('btn-bld-fire').classList.add('hidden');
-            document.getElementById('btn-bld-tent').classList.remove('hidden');
-            document.getElementById('btn-bld-wb').classList.remove('hidden');
-            UI.log("🔥 篝火驱散了黑暗。流浪者可能会被吸引过来。", "log-success");
-            this.recruitVillager(); // 第一个必定来
+    build(bId) {
+        let b = DB.buildings[bId];
+        let currAmount = State.bld[bId] || 0;
+        if (b.max && currAmount >= b.max) return;
+
+        // 检查消耗
+        for (let r in b.cost) {
+            let costVal = Math.floor(b.cost[r] * Math.pow(b.mult || 1, currAmount));
+            if (State.res[r] < costVal) return;
         }
-        else if (type === 'tent') {
-            let cost = 30 + State.bld.tent * 20;
-            if (State.res.wood >= cost) {
-                State.res.wood -= cost;
-                State.bld.tent++;
-                UI.log("⛺ 建好了一座帐篷，营地可以容纳更多人了。");
-            }
+        // 扣除消耗
+        for (let r in b.cost) {
+            State.res[r] -= Math.floor(b.cost[r] * Math.pow(b.mult || 1, currAmount));
         }
-        else if (type === 'workbench' && State.res.wood >= 50 && State.res.stone >= 20 && !State.bld.workbench) {
-            State.res.wood -= 50; State.res.stone -= 20;
-            State.bld.workbench = true;
-            document.getElementById('btn-bld-wb').classList.add('hidden');
-            document.getElementById('crafting-section').classList.remove('hidden');
-            UI.log("🛠️ 工作台建立。现在可以制作武装和工具了。", "log-success");
+
+        State.bld[bId] = currAmount + 1;
+        
+        // 建筑特效应用
+        this.recalculateCaps();
+        
+        if (bId === 'campfire') {
+            Toast.show("篝火燃起。世界不再是一片黑暗，我们可以接纳流浪者了。", "success");
+            this.spawnVillager();
+            UI.checkUnlocks();
+        } else {
+            Toast.show(`建造了 ${b.name}。`);
         }
+        UI.renderBuildings();
     },
 
-    craft(itemKey) {
-        const costs = {
-            'stoneAxe': { wood: 10, stone: 15 },
-            'boneSpear': { wood: 15, bone: 10 }
-        };
-        let c = costs[itemKey];
-        if (State.res.wood >= c.wood && (c.stone ? State.res.stone >= c.stone : true) && (c.bone ? State.res.bone >= c.bone : true)) {
-            State.res.wood -= c.wood;
-            if(c.stone) State.res.stone -= c.stone;
-            if(c.bone) State.res.bone -= c.bone;
-            State.inventory[itemKey]++;
-            UI.log(`锻造了一把 [${CONFIG.items[itemKey].name}]。可在村民卡片中装备。`);
+    research(tId) {
+        let t = DB.techs[tId];
+        if (State.techs[tId]) return; // 已研究
+
+        for (let r in t.cost) {
+            if ((State.res[r]||0) < t.cost[r]) return;
         }
+        for (let r in t.cost) {
+            State.res[r] -= t.cost[r];
+        }
+
+        State.techs[tId] = true;
+        Toast.show(`科研完成：【${t.name}】！文明向前迈进了一步。`, "success");
+        
+        if (tId === 'exploration') {
+            State.flags.mapUnlocked = true;
+            UI.checkUnlocks();
+        }
+        UI.renderTech();
+        UI.renderBuildings();
+        UI.renderRoster(); // 可能解锁了新职业
     },
 
-    recruitVillager() {
-        let v = new Villager(Date.now());
+    spawnVillager() {
+        let v = new Villager();
         State.villagers.push(v);
-        document.getElementById('roster-empty').classList.add('hidden');
-        UI.log(`👤 流浪者 [${v.name}] 加入了营地。特质: ${v.trait.name}。`, 'log-sys');
-        UI.renderRoster(); // 全量重绘卡片
+        Toast.show(`流浪者 ${v.name} 加入了营地。`);
+        UI.renderRoster();
     },
 
-    // 战斗系统核心逻辑
-    triggerRaid() {
-        State.isRaidActive = true;
-        State.threat = 0;
-        State.raidCount++;
-        
-        let enemyPower = 15 + (State.raidCount * 20); // 难度递增
-        UI.log(`⚠️ 警报！营地遭到了野兽/掠夺者的袭击！敌方战力评估: ${enemyPower}`, 'log-combat');
-        
-        let campPower = 0;
-        let defenders = State.villagers.filter(v => v.status !== '死亡');
-        defenders.forEach(v => campPower += v.getCombatPower());
-
-        UI.log(`⚔️ 营地武装总战力: ${campPower.toFixed(1)}`);
-
-        // 简单计算伤害分摊
-        setTimeout(() => {
-            if (campPower >= enemyPower * 1.5) {
-                UI.log("🛡️ 轻松击退了敌人，毫发无伤。", 'log-success');
-                State.res.food += 20; State.res.bone += 10; // 战利品
-            } else if (campPower >= enemyPower) {
-                UI.log("⚔️ 惨烈击退了敌人，部分村民受伤。");
-                defenders.forEach(v => { if(Math.random()<0.5) v.hp -= 30; });
-            } else {
-                UI.log("💥 防守失败！敌人掠夺了物资，造成了巨大伤亡！", 'log-combat');
-                State.res.food *= 0.5; State.res.wood *= 0.5;
-                defenders.forEach(v => { v.hp -= 60; });
-            }
-            State.isRaidActive = false;
-        }, 3000); // 3秒后结算，制造悬念
+    killVillager(v, reason) {
+        v.status = 'dead';
+        v.job = 'idle';
+        Toast.show(`[噩耗] ${v.name} ${reason}。`, "danger");
+        UI.renderRoster();
     },
 
-    // 供UI调用的回调
     changeJob(vId, newJob) {
         let v = State.villagers.find(x => x.id === vId);
-        if(v && v.status !== '死亡') v.job = newJob;
+        if (v && v.status !== 'dead') v.job = newJob;
     },
-    equipItem(vId, newItem) {
-        let v = State.villagers.find(x => x.id === vId);
-        if(!v || v.status === '死亡') return;
+
+    exploreEvent() {
+        if (State.exploreTimer > 0) return;
+        let pop = State.villagers.filter(v => v.status!=='dead').length;
+        if (pop < 2) { Toast.show("营地人手不足，外出探索过于危险！至少需要2名存活村民。","danger"); return; }
         
-        // 卸下旧装备
-        if (v.equip !== 'none') State.inventory[v.equip]++;
-        // 穿上新装备
-        if (newItem !== 'none') {
-            if (State.inventory[newItem] > 0) {
-                State.inventory[newItem]--;
-                v.equip = newItem;
-            } else {
-                UI.log("仓库中没有该装备！", "log-combat");
-                UI.renderRoster(); // 重置UI选择
-                return;
-            }
+        State.exploreTimer = 10;
+        document.getElementById('btn-explore').disabled = true;
+        document.getElementById('explore-prog-bg').style.display = 'block';
+        Toast.show("探险队已出发，深入迷雾之中...");
+    },
+
+    resolveExplore() {
+        let roll = Math.random();
+        if (roll < 0.3) {
+            let gain = Math.floor(Math.random() * 50) + 20;
+            State.res.stone += gain;
+            Toast.show(`探险队发现了一个废弃采石场，运回了 ${gain} 石头。`, "success");
+        } else if (roll < 0.6) {
+            let gain = Math.floor(Math.random() * 30) + 10;
+            State.res.knowledge += gain;
+            Toast.show(`探险队在废墟中找到了一些古老的刻板。获得 ${gain} 知识！`, "success");
+        } else if (roll < 0.8) {
+            Toast.show("探险队迷失在迷雾中，一无所获地逃了回来。");
         } else {
-            v.equip = 'none';
+            // 危机
+            let alive = State.villagers.filter(v => v.status!=='dead');
+            if(alive.length > 0) {
+                let victim = alive[Math.floor(Math.random() * alive.length)];
+                victim.hp -= 60;
+                Toast.show(`探险队遭到未知野兽袭击！${victim.name} 重伤逃回！`, "danger");
+            }
         }
-        UI.renderRoster(); // 刷新卡片
+    },
+
+    recalculateCaps() {
+        State.popMax = (State.bld.campfire ? 2 : 0) + (State.bld.tent * 2) + (State.bld.hut * 4);
+        State.resMax = 100 + (State.bld.storage * 200);
+    },
+
+    // 存档系统
+    saveGame(isAuto = false) {
+        localStorage.setItem('civilization_embers_save', JSON.stringify(State));
+        if(!isAuto) Toast.show("游戏进度已手动保存。", "sys");
+    },
+    loadGame() {
+        let saved = localStorage.getItem('civilization_embers_save');
+        if (saved) {
+            try { 
+                State = JSON.parse(saved); 
+                this.recalculateCaps();
+                Toast.show("欢迎回来，文明的指引者。", "sys");
+            } catch(e) { console.error(e); }
+        }
+    },
+    resetGame() {
+        if(confirm("警告：这会抹除你所有的文明进程！确定要重置吗？")) {
+            localStorage.removeItem('civilization_embers_save');
+            location.reload();
+        }
     }
 };
 
-// ================= 视图层 UI 渲染 =================
+// ================= 4. UI 视图渲染系统 =================
 const UI = {
-    update(dt) {
-        // 顶栏更新
-        document.getElementById('ui-day').innerText = State.time.day;
-        let h = Math.floor(State.time.clock / 3600);
-        let m = Math.floor((State.time.clock % 3600) / 60);
-        document.getElementById('ui-time').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
-        
-        let alive = State.villagers.filter(v=>v.status!=='死亡').length;
-        let max = (State.bld.fire ? 1 : 0) + State.bld.tent * 2;
-        document.getElementById('ui-pop').innerText = alive;
-        document.getElementById('ui-popmax').innerText = max;
+    initRenders() {
+        this.updateSeasonInfo();
+        this.renderBuildings();
+        this.renderRoster();
+        this.renderTech();
+        this.checkUnlocks();
+        // 根据状态恢复选项卡显隐
+        if(State.bld.campfire > 0) {
+            document.getElementById('nav-people').style.display = 'block';
+            document.getElementById('nav-tech').style.display = 'block';
+        }
+        if(State.flags.mapUnlocked) document.getElementById('nav-world').style.display = 'block';
+        if(State.techs['tools']) {
+            document.getElementById('row-stone').style.display = 'flex';
+            document.getElementById('grp-storage').style.display = 'block';
+        }
+    },
 
-        // 物资更新
-        document.getElementById('res-wood').innerText = Math.floor(State.res.wood);
-        document.getElementById('res-food').innerText = Math.floor(State.res.food);
-        document.getElementById('res-stone').innerText = Math.floor(State.res.stone);
-        document.getElementById('res-bone').innerText = Math.floor(State.res.bone);
+    switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.add('active');
+    },
 
-        // 建筑消耗更新
-        document.getElementById('btn-bld-tent').disabled = State.res.wood < (30 + State.bld.tent * 20);
-        document.getElementById('cost-tent').innerText = 30 + State.bld.tent * 20;
-        
-        // 装备库存
-        document.getElementById('ui-eq-axe').innerText = State.inventory.stoneAxe;
-        document.getElementById('ui-eq-spear').innerText = State.inventory.boneSpear;
+    updateTick(rates) {
+        document.getElementById('ui-pop').innerText = State.villagers.filter(v=>v.status!=='dead').length;
+        document.getElementById('ui-popmax').innerText = State.popMax;
+        document.getElementById('ui-knowledge').innerText = Math.floor(State.res.knowledge);
+        document.getElementById('res-max').innerText = State.resMax;
 
-        // 威胁条
-        let tBar = document.getElementById('threat-bar');
-        tBar.style.width = State.threat + '%';
-        if (State.threat > 80 || State.isRaidActive) tBar.parentElement.classList.add('raid-warning');
-        else tBar.parentElement.classList.remove('raid-warning');
+        ['wood', 'food', 'stone'].forEach(r => {
+            document.getElementById(`res-${r}`).innerText = Math.floor(State.res[r]||0);
+            let rateEl = document.getElementById(`rate-${r}`);
+            if(rateEl) {
+                let v = rates[r] || 0;
+                rateEl.innerText = `${v >= 0 ? '+' : ''}${v.toFixed(1)}/s`;
+                rateEl.className = `res-rate ${v < 0 ? 'rate-neg' : (v > 0 ? 'rate-pos' : '')}`;
+            }
+        });
 
-        // 脏检查更新卡片属性条 (避免频繁重建DOM)
+        // 刷新人物进度条 (脏检查)
         State.villagers.forEach(v => {
-            let elHp = document.getElementById(`hp-${v.id}`);
-            let elHunger = document.getElementById(`hunger-${v.id}`);
-            let elTxt = document.getElementById(`txt-${v.id}`);
-            if (elHp && elHunger) {
-                elHp.style.width = `${(v.hp/v.maxHp)*100}%`;
-                elHunger.style.width = `${(v.hunger/v.maxHunger)*100}%`;
-                elTxt.innerText = `HP: ${Math.floor(v.hp)} | 饱食: ${Math.floor(v.hunger)}`;
-                
-                // 如果刚刚死亡，需要全量重绘加灰色滤镜
-                let card = document.getElementById(`card-${v.id}`);
-                if(v.status === '死亡' && !card.classList.contains('dead')) {
-                    this.renderRoster();
+            let hpBar = document.getElementById(`hp-${v.id}`);
+            if (hpBar) {
+                hpBar.style.width = `${(v.hp/v.maxHp)*100}%`;
+                hpBar.style.background = v.hp < 30 ? 'var(--hp)' : 'var(--food)';
+                document.getElementById(`hunger-${v.id}`).style.width = `${(v.hunger/v.maxHunger)*100}%`;
+                if(v.status === 'dead' && !hpBar.parentElement.parentElement.classList.contains('locked')) {
+                    this.renderRoster(); // 如果有人刚死，重绘全列表应用变灰
                 }
             }
         });
+        
+        // 动态更新按钮可用性
+        this.updateButtonsAvailability();
     },
 
-    // 生成村民卡片 HTML
-    renderRoster() {
-        const roster = document.getElementById('roster');
-        roster.innerHTML = '';
-        State.villagers.forEach(v => {
-            let isDead = v.status === '死亡';
-            
-            // 职业下拉菜单
-            let jobOpts = Object.keys(CONFIG.jobs).map(k => 
-                `<option value="${k}" ${v.job === k ? 'selected' : ''}>${CONFIG.jobs[k].name}</option>`
-            ).join('');
-            
-            // 装备下拉菜单
-            let eqOpts = Object.keys(CONFIG.items).map(k => {
-                let name = CONFIG.items[k].name;
-                let stock = State.inventory[k] || 0;
-                let disabled = (k!=='none' && stock <=0 && v.equip!==k) ? 'disabled' : '';
-                let label = k==='none' ? name : `${name} (存:${stock})`;
-                return `<option value="${k}" ${v.equip === k ? 'selected' : ''} ${disabled}>${label}</option>`;
-            }).join('');
+    updateSeasonInfo() {
+        let s = DB.seasons[State.time.seasonIdx];
+        let el = document.getElementById('season-display');
+        el.innerText = `第${State.time.day}天 - ${s.name} (第${Math.floor(State.time.ticks/3600)+1}年)`;
+        el.style.color = s.color;
+    },
+
+    checkUnlocks() {
+        if (State.bld.campfire > 0) {
+            document.getElementById('nav-people').style.display = 'block';
+            document.getElementById('nav-tech').style.display = 'block';
+        }
+        if (State.techs['tools']) {
+            document.getElementById('row-stone').style.display = 'flex';
+            document.getElementById('grp-storage').style.display = 'block';
+        }
+        if (State.flags.mapUnlocked) {
+            document.getElementById('nav-world').style.display = 'block';
+        }
+    },
+
+    renderBuildings() {
+        let container = document.getElementById('building-list');
+        container.innerHTML = '';
+        
+        for (let bId in DB.buildings) {
+            let b = DB.buildings[bId];
+            if (b.reqTech && !State.techs[b.reqTech]) continue; // 科技锁
+
+            let currAmount = State.bld[bId] || 0;
+            if (b.max && currAmount >= b.max) continue; // 已达上限
+
+            let costsHtml = '';
+            let canAfford = true;
+            for (let r in b.cost) {
+                let costVal = Math.floor(b.cost[r] * Math.pow(b.mult || 1, currAmount));
+                let afford = (State.res[r]||0) >= costVal;
+                if (!afford) canAfford = false;
+                let rName = r==='wood'?'木':(r==='food'?'食':(r==='stone'?'石':''));
+                costsHtml += `<span class="cost-item ${afford?'afford':'poor'}">${rName}:${costVal}</span>`;
+            }
 
             let html = `
-                <div class="villager-card ${isDead ? 'dead' : ''}" id="card-${v.id}">
-                    <div class="v-header">
-                        <div class="v-avatar">${isDead?'☠️':'🧔'}</div>
-                        <div class="v-info">
-                            <div class="v-name">${v.name} <span style="float:right; font-size:0.8em; color:gray">${isDead?'已阵亡':'战力:'+v.getCombatPower().toFixed(0)}</span></div>
-                            <div class="v-trait">${v.trait.name}</div>
-                        </div>
+                <div class="action-card" id="card-bld-${bId}">
+                    <div class="action-title">${b.name} <span style="float:right;font-size:0.8em;color:gray;">Lv.${currAmount}</span></div>
+                    <div class="action-desc">${b.desc}</div>
+                    <div class="cost-list">${costsHtml}</div>
+                    <button class="btn-do bld-btn" data-bid="${bId}" ${canAfford?'':'disabled'} onclick="Game.build('${bId}')">建造</button>
+                </div>
+            `;
+            container.innerHTML += html;
+        }
+    },
+
+    renderTech() {
+        let container = document.getElementById('tech-list');
+        container.innerHTML = '';
+        
+        for (let tId in DB.techs) {
+            let t = DB.techs[tId];
+            if (t.req && !State.techs[t.req]) continue; // 前置未解锁不显示
+            
+            let isResearched = State.techs[tId];
+            let costsHtml = '';
+            let canAfford = true;
+            if (!isResearched) {
+                for (let r in t.cost) {
+                    let afford = (State.res[r]||0) >= t.cost[r];
+                    if (!afford) canAfford = false;
+                    let rName = r==='wood'?'木':(r==='food'?'食':(r==='stone'?'石':(r==='knowledge'?'智':'')));
+                    costsHtml += `<span class="cost-item ${afford?'afford':'poor'}">${rName}:${t.cost[r]}</span>`;
+                }
+            }
+
+            let html = `
+                <div class="action-card tech-card ${isResearched ? 'tech-researched' : ''}">
+                    <div class="action-title">${t.name} ${isResearched ? '✅' : ''}</div>
+                    <div class="action-desc">${t.desc}</div>
+                    ${!isResearched ? `<div class="cost-list">${costsHtml}</div><button class="btn-do tech-btn" data-tid="${tId}" ${canAfford?'':'disabled'} onclick="Game.research('${tId}')">研究</button>` : ''}
+                </div>
+            `;
+            container.innerHTML += html;
+        }
+    },
+
+    renderRoster() {
+        let container = document.getElementById('roster-list');
+        container.innerHTML = '';
+        
+        if (State.villagers.length === 0) {
+            container.innerHTML = '<div style="color:#666;">营地空无一人...</div>';
+            return;
+        }
+
+        State.villagers.forEach(v => {
+            let isDead = v.status === 'dead';
+            
+            // 过滤可用职业
+            let jobOptions = '';
+            for(let jId in DB.jobs) {
+                let j = DB.jobs[jId];
+                if (j.reqTech && !State.techs[j.reqTech]) continue;
+                jobOptions += `<option value="${jId}" ${v.job === jId ? 'selected' : ''}>${j.name}</option>`;
+            }
+
+            let html = `
+                <div class="villager-card ${isDead ? 'locked' : ''}">
+                    <div class="v-top">
+                        <span class="v-name">${isDead?'☠️':'👤'} ${v.name}</span>
+                        <span class="v-status">${isDead?'已死亡': DB.jobs[v.job].name}</span>
                     </div>
-                    
-                    <div class="bar-container"><div class="bar-fill bar-hp" id="hp-${v.id}" style="width:${(v.hp/v.maxHp)*100}%"></div></div>
-                    <div class="bar-container"><div class="bar-fill bar-hunger" id="hunger-${v.id}" style="width:${(v.hunger/v.maxHunger)*100}%"></div></div>
-                    <div class="v-stats-text" id="txt-${v.id}">HP: ${Math.floor(v.hp)} | 饱食: ${Math.floor(v.hunger)}</div>
-                    
+                    <div class="v-bars">
+                        <div class="bar-bg" title="生命值"><div class="bar-fill" id="hp-${v.id}" style="width:${(v.hp/v.maxHp)*100}%; background:var(--food);"></div></div>
+                        <div class="bar-bg" title="饱食度"><div class="bar-fill" id="hunger-${v.id}" style="width:${(v.hunger/v.maxHunger)*100}%; background:var(--accent);"></div></div>
+                    </div>
                     <div class="v-controls">
-                        <select class="job-select" onchange="Core.changeJob(${v.id}, this.value)" ${isDead?'disabled':''}>
-                            ${jobOpts}
-                        </select>
-                        <select class="equip-select" onchange="Core.equipItem(${v.id}, this.value)" ${isDead?'disabled':''}>
-                            ${eqOpts}
+                        <select onchange="Game.changeJob('${v.id}', this.value)" ${isDead?'disabled':''}>
+                            ${jobOptions}
                         </select>
                     </div>
                 </div>
             `;
-            roster.insertAdjacentHTML('beforeend', html);
+            container.innerHTML += html;
         });
     },
 
-    log(msg, className = '') {
-        const logBox = document.getElementById('log');
-        let d = new Date();
-        let t = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
-        
-        let el = document.createElement('div');
-        el.className = `log-line ${className}`;
-        el.innerHTML = `<span class="log-time">[${t}]</span> ${msg}`;
-        
-        logBox.insertBefore(el, logBox.firstChild);
-        if(logBox.children.length > 50) logBox.removeChild(logBox.lastChild); // 限制日志数量防止卡顿
+    // 独立的高频更新方法，只刷新按钮的可点击状态，不重建 DOM
+    updateButtonsAvailability() {
+        document.querySelectorAll('.bld-btn').forEach(btn => {
+            let bId = btn.getAttribute('data-bid');
+            let b = DB.buildings[bId];
+            let currAmount = State.bld[bId] || 0;
+            let canAfford = true;
+            for (let r in b.cost) {
+                if (State.res[r] < Math.floor(b.cost[r] * Math.pow(b.mult || 1, currAmount))) canAfford = false;
+            }
+            btn.disabled = !canAfford;
+            // 更新卡片上的数字颜色 (简化处理，实际需要细化DOM操作)
+        });
+
+        document.querySelectorAll('.tech-btn').forEach(btn => {
+            let tId = btn.getAttribute('data-tid');
+            let t = DB.techs[tId];
+            let canAfford = true;
+            for (let r in t.cost) { if ((State.res[r]||0) < t.cost[r]) canAfford = false; }
+            btn.disabled = !canAfford;
+        });
     }
 };
 
-// 启动游戏
-Core.init();
+// ================= 5. 通知组件 (Toast) =================
+const Toast = {
+    show(msg, type = 'normal') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerText = msg;
+        container.appendChild(el);
+        
+        setTimeout(() => {
+            el.style.animation = 'fadeOut 0.3s forwards';
+            setTimeout(() => el.remove(), 300);
+        }, 4000);
+    }
+};
+
+// 启动点火
+Game.init();
 
 </script>
 </body>
