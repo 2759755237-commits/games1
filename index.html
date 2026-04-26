@@ -256,395 +256,128 @@
     // ---------------------------------------------------------
     // [第一部分结束] 请在下方粘贴 [第二部分：数据字典] 的代码
     // ---------------------------------------------------------
-    // ========================================================================
-    // [第二部分：深度数据字典 (Enterprise Data Layer)]
-    // 设计理念：完全数据驱动 (Data-Driven)。所有业务逻辑将读取此配置表，
-    // 后期添加新内容只需扩展 JSON，无需修改底层算法。
-    // 包含：系统常数、稀有度曲线、元素克制、式神全图鉴、技能库、掉落表。
+// ========================================================================
+    // [第二部分：史诗级数据字典 (Epic Data Layer)]
+    // 包含 120+ 名式神的全图鉴。全面引入了 `skill` (主动技能) 和 `trait` (被动特性)。
+    // 这将为后续的战斗伤害重构（暴击、连击、溢出）提供坚实的数据支撑。
     // ========================================================================
     GameApp.Data = {
         
-        /**
-         * 1. 游戏系统级常数配置 (System Constants)
-         * 控制全局节奏、离线收益上限、刷新频率等
-         */
         System: {
-            BASE_FPS: 60,                     // 内部逻辑帧率
-            TICK_RATE_MS: 100,                // 挂机结算心跳频率 (100毫秒一次)
-            MAX_OFFLINE_HOURS: 24,            // 最大离线挂机累计时间 (小时)
-            COMBAT_MAX_ROSTER: 5,             // 战场最大同时上阵人数
-            CRIT_BASE_MULTIPLIER: 1.5,        // 基础暴击伤害倍率 (150%)
-            DEFENSE_MITIGATION_CAP: 0.8,      // 护甲最高免伤上限 (80%)
-            MAX_PLAYER_LEVEL: 100,            // 玩家最高等级
-            LEVEL_UP_EXP_EXPONENT: 2.5,       // 玩家升级经验指数增长系数
-            CURRENCY_MAX_CAP: 999999999999999 // 咸鱼类游戏特征：数值上限极高
+            BASE_FPS: 60, TICK_RATE_MS: 100, MAX_OFFLINE_HOURS: 24, COMBAT_MAX_ROSTER: 5,
+            CRIT_BASE_MULTIPLIER: 1.5, DEFENSE_MITIGATION_CAP: 0.8, MAX_PLAYER_LEVEL: 100,
+            LEVEL_UP_EXP_EXPONENT: 2.5, CURRENCY_MAX_CAP: 999999999999999
         },
 
-        /**
-         * 2. 元素克制系统 (Element Affinity)
-         * 阴阳师初期特色，虽然咸鱼模式简化了战斗，但底层保留克制乘区
-         */
         Elements: {
-            'WATER': { id: 'WATER', name: '水', strongAgainst: 'FIRE',  weakAgainst: 'WIND', icon: '💧' },
-            'FIRE':  { id: 'FIRE',  name: '火', strongAgainst: 'WIND',  weakAgainst: 'WATER',icon: '🔥' },
-            'WIND':  { id: 'WIND',  name: '风', strongAgainst: 'WATER', weakAgainst: 'FIRE', icon: '🌪️' },
-            'LIGHT': { id: 'LIGHT', name: '光', strongAgainst: 'DARK',  weakAgainst: 'DARK', icon: '✨' },
-            'DARK':  { id: 'DARK',  name: '暗', strongAgainst: 'LIGHT', weakAgainst: 'LIGHT',icon: '🌑' },
-            'NONE':  { id: 'NONE',  name: '无', strongAgainst: null,    weakAgainst: null,   icon: '⚪' }
+            'WATER': { id: 'WATER', name: '水', icon: '💧' }, 'FIRE':  { id: 'FIRE',  name: '火', icon: '🔥' },
+            'WIND':  { id: 'WIND',  name: '风', icon: '🌪️' }, 'LIGHT': { id: 'LIGHT', name: '光', icon: '✨' },
+            'DARK':  { id: 'DARK',  name: '暗', icon: '🌑' }, 'NONE':  { id: 'NONE',  name: '无', icon: '⚪' }
         },
 
-        /**
-         * 3. 稀有度与成长曲线矩阵 (Rarity & Scaling Matrix)
-         * 咸鱼类游戏核心：不同稀有度的基础属性差异极大，且升级增加的属性呈指数级。
-         */
         Rarity: {
-            'N': { 
-                id: 'N', name: '普通', color: 'var(--r-n)', 
-                summonWeight: 5500, // 55% 概率 (权重 5500/10000)
-                maxLevel: 100,
-                baseAtk: 10, baseHp: 100, baseDef: 5,
-                growthExp: 1.10,    // 每次升级属性乘以 1.10
-                upgradeCostBase: 50, upgradeCostExp: 1.15
-            },
-            'R': { 
-                id: 'R', name: '稀有', color: 'var(--r-r)', 
-                summonWeight: 3000, // 30% 概率
-                maxLevel: 500,
-                baseAtk: 45, baseHp: 350, baseDef: 15,
-                growthExp: 1.12, 
-                upgradeCostBase: 100, upgradeCostExp: 1.16
-            },
-            'SR': { 
-                id: 'SR', name: '珍贵', color: 'var(--r-sr)', 
-                summonWeight: 1300, // 13% 概率
-                maxLevel: 1000,
-                baseAtk: 250, baseHp: 1500, baseDef: 50,
-                growthExp: 1.15,
-                upgradeCostBase: 300, upgradeCostExp: 1.18
-            },
-            'SSR': { 
-                id: 'SSR', name: '极神', color: 'var(--r-ssr)', 
-                summonWeight: 180,  // 1.8% 概率
-                maxLevel: 3000,
-                baseAtk: 1500, baseHp: 8000, baseDef: 200,
-                growthExp: 1.20,    // SSR成长极高
-                upgradeCostBase: 1000, upgradeCostExp: 1.22
-            },
-            'SP': { 
-                id: 'SP', name: '典藏', color: '#ff4757', // 隐藏的最高稀有度
-                summonWeight: 20,   // 0.2% 概率
-                maxLevel: 4000,
-                baseAtk: 5000, baseHp: 25000, baseDef: 500,
-                growthExp: 1.25,
-                upgradeCostBase: 5000, upgradeCostExp: 1.25
-            }
+            'N': { id: 'N', name: '普通', color: 'var(--r-n)', summonWeight: 5000, maxLevel: 100, baseAtk: 10, baseHp: 100, baseDef: 5, growthExp: 1.10, upgradeCostBase: 50, upgradeCostExp: 1.15 },
+            'R': { id: 'R', name: '稀有', color: 'var(--r-r)', summonWeight: 3000, maxLevel: 500, baseAtk: 45, baseHp: 350, baseDef: 15, growthExp: 1.12, upgradeCostBase: 100, upgradeCostExp: 1.16 },
+            'SR': { id: 'SR', name: '珍贵', color: 'var(--r-sr)', summonWeight: 1600, maxLevel: 1000, baseAtk: 250, baseHp: 1500, baseDef: 50, growthExp: 1.15, upgradeCostBase: 300, upgradeCostExp: 1.18 },
+            'SSR': { id: 'SSR', name: '极神', color: 'var(--r-ssr)', summonWeight: 350, maxLevel: 3000, baseAtk: 1500, baseHp: 8000, baseDef: 200, growthExp: 1.20, upgradeCostBase: 1000, upgradeCostExp: 1.22 },
+            'SP': { id: 'SP', name: '典藏', color: '#ff4757', summonWeight: 50, maxLevel: 4000, baseAtk: 5000, baseHp: 25000, baseDef: 500, growthExp: 1.25, upgradeCostBase: 5000, upgradeCostExp: 1.25 }
         },
 
-        /**
-         * 4. 式神全图鉴数据库 (Shikigami Compendium)
-         * 企业级数据结构：包含基础面板、初始暴击率、专属技能ID、觉醒所需碎片、故事传记。
-         */
+        // =========================================================
+        // 核心图鉴：包含专属技能 (Skill) 与 核心特性 (Trait)
+        // =========================================================
         Shikigami: {
             // ------------------ N卡序列 ------------------
-            'n_tianxie_green': { 
-                id: 'n_tianxie_green', name: '天邪鬼绿', rarity: 'N', element: 'WIND', role: 'DPS', icon: '👺',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, 
-                skillId: 'sk_basic_hit',
-                lore: '手持羽子板的妖怪，常常在草丛中恶作剧。', tags: ['妖怪', '恶作剧']
-            },
-            'n_tianxie_red': { 
-                id: 'n_tianxie_red', name: '天邪鬼赤', rarity: 'N', element: 'FIRE', role: 'TANK', icon: '👹',
-                initCritRate: 0.02, initCritDmg: 1.5, atkSpeed: 0.8, 
-                skillId: 'sk_taunt_strike',
-                lore: '喜欢拍打肚皮的妖怪，脾气火爆。', tags: ['妖怪', '肉盾']
-            },
-            'n_tianxie_yellow': { 
-                id: 'n_tianxie_yellow', name: '天邪鬼黄', rarity: 'N', element: 'WATER', role: 'SUPPORT', icon: '🥁',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_drum_beat',
-                lore: '坐在鼓上的妖怪，会敲鼓为同伴助威。', tags: ['妖怪', '辅助']
-            },
-            'n_tianxie_blue': { 
-                id: 'n_tianxie_blue', name: '天邪鬼青', rarity: 'N', element: 'WIND', role: 'SUPPORT', icon: '🪁',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.5, 
-                skillId: 'sk_kite_wind',
-                lore: '拿着风筝的妖怪，总是跑得很快。', tags: ['妖怪', '敏捷']
-            },
-            'n_chou_shen': { 
-                id: 'n_chou_shen', name: '帚神', rarity: 'N', element: 'NONE', role: 'DPS', icon: '🧹',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_sweep',
-                lore: '一把有灵性的扫帚，非常爱干净。', tags: ['付丧神', '清扫']
-            },
-            'n_tu_bi': { 
-                id: 'n_tu_bi', name: '涂壁', rarity: 'N', element: 'NONE', role: 'TANK', icon: '🧱',
-                initCritRate: 0.01, initCritDmg: 1.5, atkSpeed: 0.6, 
-                skillId: 'sk_wall_block',
-                lore: '挡在路中间的石壁妖怪，性格顽固。', tags: ['付丧神', '防御']
-            },
-            'n_ti_deng': { 
-                id: 'n_ti_deng', name: '提灯小僧', rarity: 'N', element: 'FIRE', role: 'SUPPORT', icon: '🏮',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, 
-                skillId: 'sk_lantern_fire',
-                lore: '总是在夜里提着灯笼引路的妖怪。', tags: ['妖怪', '火光']
-            },
-            'n_kasa_obake': { 
-                id: 'n_kasa_obake', name: '唐纸伞妖', rarity: 'N', element: 'WIND', role: 'SUPPORT', icon: '☂️',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.3, 
-                skillId: 'sk_umbrella_spin',
-                lore: '被人遗弃的破伞化成的妖怪。', tags: ['付丧神', '跳跃']
-            },
+            'n_tianxie_green': { id: 'n_tianxie_green', name: '天邪鬼绿', rarity: 'N', role: 'DPS', icon: '👺', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '羽子板', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '恶作剧', desc: '无' } },
+            'n_tianxie_red': { id: 'n_tianxie_red', name: '天邪鬼赤', rarity: 'N', role: 'TANK', icon: '👹', initCritRate: 0.02, initCritDmg: 1.5, atkSpeed: 0.8, skill: { name: '拍肚皮', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '嘲讽', desc: '挑衅目标' } },
+            'n_tianxie_yellow': { id: 'n_tianxie_yellow', name: '天邪鬼黄', rarity: 'N', role: 'SUPPORT', icon: '🥁', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '咚咚', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '暴击提升', desc: '提升全队暴击率' } },
+            'n_tianxie_blue': { id: 'n_tianxie_blue', name: '天邪鬼青', rarity: 'N', role: 'SUPPORT', icon: '🪁', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.5, skill: { name: '风筝', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '速度提升', desc: '提升全队速度' } },
+            'n_chou_shen': { id: 'n_chou_shen', name: '帚神', rarity: 'N', role: 'DPS', icon: '🧹', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '大清扫', desc: '造成120%全体伤害', mult: 1.2 }, trait: { name: '勤奋', desc: '无' } },
+            'n_tu_bi': { id: 'n_tu_bi', name: '涂壁', rarity: 'N', role: 'TANK', icon: '🧱', initCritRate: 0.01, initCritDmg: 1.5, atkSpeed: 0.6, skill: { name: '坚壁', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '防御提升', desc: '增加全队防御力' } },
+            'n_ti_deng': { id: 'n_ti_deng', name: '提灯小僧', rarity: 'N', role: 'SUPPORT', icon: '🏮', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '头槌', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '引路', desc: '无' } },
+            'n_kasa_obake': { id: 'n_kasa_obake', name: '唐纸伞妖', rarity: 'N', role: 'SUPPORT', icon: '☂️', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '伞击', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '惊吓', desc: '无' } },
+            'n_jisheng': { id: 'n_jisheng', name: '寄生魂', rarity: 'N', role: 'DPS', icon: '🔥', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '投掷', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '汲取', desc: '无' } },
+            'n_daomu': { id: 'n_daomu', name: '盗墓小鬼', rarity: 'N', role: 'DPS', icon: '👻', initCritRate: 0.08, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '抓挠', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '好奇', desc: '无' } },
+            'n_chishe': { id: 'n_chishe', name: '赤舌', rarity: 'N', role: 'SUPPORT', icon: '👅', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 0.9, skill: { name: '雷击', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '鼓舞', desc: '清空敌人行动条' } },
+            'n_denglong': { id: 'n_denglong', name: '灯笼鬼', rarity: 'N', role: 'SUPPORT', icon: '🏮', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '舔舐', desc: '造成100%伤害', mult: 1.0 }, trait: { name: '大明灯', desc: '暴击率大幅提升' } },
 
             // ------------------ R卡序列 ------------------
-            'r_yamausagi': { 
-                id: 'r_yamausagi', name: '山兔', rarity: 'R', element: 'WIND', role: 'SUPPORT', icon: '🐰',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.8, // 速度极快
-                skillId: 'sk_bunny_dance',
-                lore: '骑着魔蛙的可爱小兔子，非常喜欢和人赛跑。', tags: ['萌系', '拉条']
-            },
-            'r_zashiki': { 
-                id: 'r_zashiki', name: '座敷童子', rarity: 'R', element: 'FIRE', role: 'SUPPORT', icon: '👧',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, 
-                skillId: 'sk_soul_fire',
-                lore: '会给家里带来财运的福神小女孩，但代价是消耗自己的生命。', tags: ['打火机', '福神']
-            },
-            'r_hotarugusa': { 
-                id: 'r_hotarugusa', name: '萤草', rarity: 'R', element: 'WATER', role: 'HEALER', icon: '🌿',
-                initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_healing_light',
-                lore: '拿着巨大蒲公英的少女，看起来柔弱其实力气很大。', tags: ['治疗', '大力出奇迹']
-            },
-            'r_shouzu': { 
-                id: 'r_shouzu', name: '椒图', rarity: 'R', element: 'WATER', role: 'SUPPORT', icon: '🐚',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.3, 
-                skillId: 'sk_water_link',
-                lore: '生活在深海的贝壳妖女，渴望人类的世界。', tags: ['分摊伤害', '水栖']
-            },
-            'r_heiyo': { 
-                id: 'r_heiyo', name: '兵俑', rarity: 'R', element: 'NONE', role: 'TANK', icon: '🗿',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 0.9, 
-                skillId: 'sk_taunt_statue',
-                lore: '古老陵墓中苏醒的兵马俑，誓死守护主人。', tags: ['嘲讽', '坚硬']
-            },
-            'r_karasu_tengu': { 
-                id: 'r_karasu_tengu', name: '鸦天狗', rarity: 'R', element: 'WIND', role: 'DPS', icon: '🦅',
-                initCritRate: 0.12, initCritDmg: 1.5, atkSpeed: 1.4, 
-                skillId: 'sk_crow_dive',
-                lore: '长着乌鸦翅膀的妖怪，梦想成为大天狗那样的英雄。', tags: ['飞行', '协战']
-            },
-            'r_ame_onna': { 
-                id: 'r_ame_onna', name: '雨女', rarity: 'R', element: 'WATER', role: 'SUPPORT', icon: '☔',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_tears_rain',
-                lore: '一直在桥头等待丈夫归来的女子，伴随着无尽的阴雨。', tags: ['驱散', '悲伤']
-            },
-            'r_mio': { 
-                id: 'r_mio', name: '三尾狐', rarity: 'R', element: 'FIRE', role: 'DPS', icon: '🦊',
-                initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.5, 
-                skillId: 'sk_fox_assault',
-                lore: '在樱花树下沉睡的狐妖，有着妩媚的外表和致命的利爪。', tags: ['吸血', '妖狐']
-            },
-            'r_kyonshi_imoto': { 
-                id: 'r_kyonshi_imoto', name: '跳跳妹妹', rarity: 'R', element: 'NONE', role: 'SUMMONER', icon: '🐕',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_dog_bite',
-                lore: '僵尸家族的小妹妹，性格开朗，喜欢毛茸茸的动物。', tags: ['僵尸', '召唤']
-            },
-            'r_koi': { 
-                id: 'r_koi', name: '鲤鱼精', rarity: 'R', element: 'WATER', role: 'SUPPORT', icon: '🐟',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.3, 
-                skillId: 'sk_bubble_shield',
-                lore: '天真烂漫的鲤鱼妖怪，喜欢用泡泡和大家玩耍。', tags: ['护盾', '水栖']
-            },
+            'r_yamausagi': { id: 'r_yamausagi', name: '山兔', rarity: 'R', role: 'SUPPORT', icon: '🐰', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.8, skill: { name: '兔子舞', desc: '全队行动提前', mult: 0 }, trait: { name: '疾风', desc: '初始速度极高' } },
+            'r_zashiki': { id: 'r_zashiki', name: '座敷童子', rarity: 'R', role: 'SUPPORT', icon: '👧', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '福运繁荣', desc: '消耗生命制造鬼火', mult: 0 }, trait: { name: '打火机', desc: '技能频率加快' } },
+            'r_hotarugusa': { id: 'r_hotarugusa', name: '萤草', rarity: 'R', role: 'HEALER', icon: '🌿', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '治愈之光', desc: '群奶，回复量基于攻击力', mult: 1.5 }, trait: { name: '生花', desc: '受击时回复生命' } },
+            'r_shouzu': { id: 'r_shouzu', name: '椒图', rarity: 'R', role: 'SUPPORT', icon: '🐚', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '涓流', desc: '连接全队平摊伤害', mult: 0 }, trait: { name: '润物无声', desc: '受击提升全队暴击伤害' } },
+            'r_ushi': { id: 'r_ushi', name: '丑时之女', rarity: 'R', role: 'SUPPORT', icon: '🎎', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '草人替身', desc: '连接Boss，转移受到伤害', mult: 2.0 }, trait: { name: '咒火', desc: '增加目标受到的伤害' } },
+            'r_tesso': { id: 'r_tesso', name: '铁鼠', rarity: 'R', role: 'SUPPORT', icon: '🐭', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '钱币砸击', desc: 'AOE伤害并附加易伤', mult: 1.2 }, trait: { name: '横财护身', desc: '战斗胜利获得额外金币' } },
+            'r_hitotsume': { id: 'r_hitotsume', name: '独眼小僧', rarity: 'R', role: 'TANK', icon: '👁️', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 0.8, skill: { name: '石像攻击', desc: '单体伤害并眩晕', mult: 1.0 }, trait: { name: '金刚经', desc: '受击为全队提供反伤护盾' } },
+            'r_kanko': { id: 'r_kanko', name: '管狐', rarity: 'R', role: 'DPS', icon: '🦊', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '爆轰炮', desc: '造成228%高额单体伤害', mult: 2.28 }, trait: { name: '竹之护', desc: '行动后概率钻入竹管提升防御' } },
+            'r_shikaeru': { id: 'r_shikaeru', name: '青蛙瓷器', rarity: 'R', role: 'DPS', icon: '🐸', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '岭上开花', desc: '投掷骰子造成随机段数伤害', mult: 2.5 }, trait: { name: '转运', desc: '死亡时触发一次无消耗技能' } },
+            'r_ame_onna': { id: 'r_ame_onna', name: '雨女', rarity: 'R', role: 'SUPPORT', icon: '☔', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '天之泪', desc: '驱散敌方增益与我方减益', mult: 0.5 }, trait: { name: '净化之雨', desc: '回合开始驱散自身控制' } },
+            'r_karasu_tengu': { id: 'r_karasu_tengu', name: '鸦天狗', rarity: 'R', role: 'DPS', icon: '🦅', initCritRate: 0.12, initCritDmg: 1.5, atkSpeed: 1.4, skill: { name: '群鸦乱舞', desc: 'AOE伤害，概率邀战', mult: 1.19 }, trait: { name: '羽清', desc: '回合开始概率驱散队友减益' } },
+            'r_shuten_bot': { id: 'r_shuten_bot', name: '首无', rarity: 'R', role: 'DPS', icon: '👻', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '虚无', desc: '无视目标40%防御造成伤害', mult: 2.06 }, trait: { name: '冥火', desc: '对高血量目标造成额外伤害' } },
+            'r_gaki': { id: 'r_gaki', name: '饿鬼', rarity: 'R', role: 'DPS', icon: '🤤', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '饥不择食', desc: '吞食目标，造成高额伤害', mult: 1.5 }, trait: { name: '盗窃', desc: '攻击有概率偷取目标增益' } },
+            'r_koi': { id: 'r_koi', name: '鲤鱼精', rarity: 'R', role: 'SUPPORT', icon: '🐟', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '泡泡之牢', desc: '将目标关在泡泡中无法行动', mult: 1.0 }, trait: { name: '泡泡护盾', desc: '为全队提供护盾' } },
+            'r_heiyo': { id: 'r_heiyo', name: '兵俑', rarity: 'R', role: 'TANK', icon: '🗿', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 0.9, skill: { name: '坚不可破', desc: '消耗生命嘲讽敌方全体', mult: 0.5 }, trait: { name: '武士之躯', desc: '血量越低防御越高' } },
 
             // ------------------ SR卡序列 ------------------
-            'sr_ubume': { 
-                id: 'sr_ubume', name: '姑获鸟', rarity: 'SR', element: 'WIND', role: 'DPS', icon: '🌂',
-                initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_crane_strike', // 经典：飒！伞剑！
-                lore: '喜爱婴儿的妖怪，听到婴儿哭声就会提剑赶去。曾经的平民战神。', tags: ['协战', '多段AOE']
-            },
-            'sr_yukionna': { 
-                id: 'sr_yukionna', name: '雪女', rarity: 'SR', element: 'WATER', role: 'CC', icon: '❄️',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.0, 
-                skillId: 'sk_blizzard',
-                lore: '浑身冰冷的雪之少女，会将一切靠近她的事物冻结。', tags: ['冰冻', '控制']
-            },
-            'sr_shiro_mujou': { 
-                id: 'sr_shiro_mujou', name: '鬼使白', rarity: 'SR', element: 'DARK', role: 'DPS', icon: '👻',
-                initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_soul_fire_aoe',
-                lore: '冥界的引路人，性格温和，寻找着自己失去的记忆。', tags: ['毒伤', '冥界']
-            },
-            'sr_kuro_mujou': { 
-                id: 'sr_kuro_mujou', name: '鬼使黑', rarity: 'SR', element: 'DARK', role: 'DPS', icon: '🗡️',
-                initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_death_slash',
-                lore: '挥舞巨大黑镰的鬼使，为了保护弟弟愿意做任何事。', tags: ['收割', '冥界']
-            },
-            'sr_momiji': { 
-                id: 'sr_momiji', name: '鬼女红叶', rarity: 'SR', element: 'FIRE', role: 'DPS', icon: '🍁',
-                initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_maple_dance',
-                lore: '绝美的女鬼，深爱着晴明，却被酒吞童子苦苦单恋。', tags: ['诅咒', '红叶']
-            },
-            'sr_kamaitachi': { 
-                id: 'sr_kamaitachi', name: '镰鼬', rarity: 'SR', element: 'WIND', role: 'SUPPORT', icon: '🐹',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.5, 
-                skillId: 'sk_brother_bond',
-                lore: '三兄弟挤在一件衣服里的妖怪，吵吵闹闹但配合默契。', tags: ['拉条', '多动症']
-            },
-            'sr_vampira': { 
-                id: 'sr_vampira', name: '吸血姬', rarity: 'SR', element: 'DARK', role: 'DPS', icon: '🦇',
-                initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_blood_bite',
-                lore: '失去双亲的少女，对鲜血有着强烈的渴望。', tags: ['卖血', '反击']
-            },
-            'sr_yoko': { 
-                id: 'sr_yoko', name: '妖狐', rarity: 'SR', element: 'WIND', role: 'DPS', icon: '🦊',
-                initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.3, 
-                skillId: 'sk_blade_wind', // 经典：脸狐，突突突
-                lore: '戴着面具的风流妖怪，四处寻找命中注定的少女。', tags: ['连击', '看脸']
-            },
-            'sr_momo': { 
-                id: 'sr_momo', name: '桃花妖', rarity: 'SR', element: 'NONE', role: 'HEALER', icon: '🌸',
-                initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_peach_blossom',
-                lore: '桃花化成的妖怪，性格温柔，是樱花妖的挚友。', tags: ['复活', '暴击群奶']
-            },
-            'sr_ebisu': { 
-                id: 'sr_ebisu', name: '惠比寿', rarity: 'SR', element: 'WATER', role: 'HEALER', icon: '🎣',
-                initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, 
-                skillId: 'sk_carp_banner',
-                lore: '骑着金鱼的老爷爷，福神之一，能带来财富。', tags: ['召唤奶', '打火']
-            },
+            'sr_ubume': { id: 'sr_ubume', name: '姑获鸟', rarity: 'SR', role: 'DPS', icon: '🌂', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '天翔鹤斩', desc: '对全体造成3段伤害，对主目标第4段', mult: 3.5 }, trait: { name: '协战', desc: '队友普攻时有30%概率追击' } },
+            'sr_yukionna': { id: 'sr_yukionna', name: '雪女', rarity: 'SR', role: 'CC', icon: '❄️', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '暴风雪', desc: '3段群体伤害，有概率冰冻敌人', mult: 1.5 }, trait: { name: '冰甲术', desc: '回合结束生成护盾' } },
+            'sr_kuro_mujou': { id: 'sr_kuro_mujou', name: '鬼使黑', rarity: 'SR', role: 'DPS', icon: '🗡️', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '死亡宣判', desc: '对生命值大于60%的敌人造成额外50%伤害', mult: 2.5 }, trait: { name: '索命', desc: '击杀目标后立即获得新回合' } },
+            'sr_shiro_mujou': { id: 'sr_shiro_mujou', name: '鬼使白', rarity: 'SR', role: 'DPS', icon: '👻', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '无常夺命', desc: '召唤小鬼自爆，施加不可驱散的毒伤', mult: 2.0 }, trait: { name: '魂狩', desc: '攻击附加持续伤害' } },
+            'sr_kuro_doji': { id: 'sr_kuro_doji', name: '黑童子', rarity: 'SR', role: 'DPS', icon: '🪓', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '连斩', desc: '血量每降低30%增加一段连斩', mult: 1.8 }, trait: { name: '魂之怒火', desc: '受击时概率无消耗释放连斩' } },
+            'sr_kamaitachi': { id: 'sr_kamaitachi', name: '镰鼬', rarity: 'SR', role: 'SUPPORT', icon: '🐹', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.5, skill: { name: '兄弟之绊', desc: '提升全队攻击与行动条', mult: 0.5 }, trait: { name: '人多势众', desc: '行动结束有30%概率获得新回合' } },
+            'sr_yoko': { id: 'sr_yoko', name: '妖狐', rarity: 'SR', role: 'DPS', icon: '🦊', initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '狂风刃卷', desc: '造成2段伤害，有50%概率不断连击', mult: 1.3 }, trait: { name: '聚气', desc: '造成伤害时叠加攻击buff' } },
+            'sr_vampira': { id: 'sr_vampira', name: '吸血姬', rarity: 'SR', role: 'DPS', icon: '🦇', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '鲜血之拥', desc: '造成伤害并回复自身生命', mult: 2.0 }, trait: { name: '血怒', desc: '生命越低普攻伤害越高' } },
+            'sr_inugami': { id: 'sr_inugami', name: '犬神', rarity: 'SR', role: 'DPS', icon: '🐕', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '心剑乱舞', desc: '连续攻击5次随机敌方', mult: 2.5 }, trait: { name: '守护', desc: '保护半血以下队友，受击时反击' } },
+            'sr_ebisu': { id: 'sr_ebisu', name: '惠比寿', rarity: 'SR', role: 'HEALER', icon: '🎣', initCritRate: 0.05, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '鲤鱼旗', desc: '召唤鲤鱼旗，队友行动时回血', mult: 0 }, trait: { name: '赐福', desc: '受击概率获得鬼火' } },
+            'sr_momo': { id: 'sr_momo', name: '桃花妖', rarity: 'SR', role: 'HEALER', icon: '🌸', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '桃花灼灼', desc: '复活一名阵亡队友', mult: 0 }, trait: { name: '花之馨息', desc: '治疗暴击时转为群体治疗' } },
+            'sr_hannya': { id: 'sr_hannya', name: '般若', rarity: 'SR', role: 'SUPPORT', icon: '👹', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '鬼面', desc: 'AOE伤害，封印目标被动与御魂', mult: 1.1 }, trait: { name: '嫉恨之心', desc: '造成伤害时概率封印目标' } },
+            'sr_chin': { id: 'sr_chin', name: '鸩', rarity: 'SR', role: 'DPS', icon: '🪶', initCritRate: 0.15, initCritDmg: 1.5, atkSpeed: 1.4, skill: { name: '毒之华', desc: '对全体施加鸩毒，叠加引发爆炸伤害', mult: 1.5 }, trait: { name: '鸩羽', desc: '受击使攻击者中毒' } },
+            'sr_bukkuman': { id: 'sr_bukkuman', name: '书翁', rarity: 'SR', role: 'SUPPORT', icon: '📜', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '万象之书', desc: '记录目标受到的伤害，回合后引爆', mult: 3.0 }, trait: { name: '云游', desc: '保护生命最低队友免受致死伤害' } },
+            'sr_kanihime': { id: 'sr_kanihime', name: '蟹姬', rarity: 'SR', role: 'DPS', icon: '🦀', initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.0, skill: { name: '螺螺锤', desc: '造成2段极高AOE伤害，随后眩晕自身', mult: 3.2 }, trait: { name: '硬甲', desc: '战斗开始获得巨额减伤护盾' } },
+            'sr_kujira': { id: 'sr_kujira', name: '化鲸', rarity: 'SR', role: 'DPS', icon: '🐋', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '齿甲', desc: '赋予队友齿甲，行动后触发真实AOE伤害', mult: 2.0 }, trait: { name: '体甲', desc: '受击时回复生命并增加行动条' } },
 
-            // ------------------ SSR卡序列 (深渊巨兽) ------------------
-            'ssr_ootengu': { 
-                id: 'ssr_ootengu', name: '大天狗', rarity: 'SSR', element: 'WIND', role: 'DPS', icon: '🌪️',
-                initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.3, 
-                skillId: 'sk_blade_storm', // 羽刃暴风
-                lore: '高傲的大天狗，为了大义不惜黑化，拥有卷起狂风的力量。', tags: ['四段AOE', '免疫控制']
-            },
-            'ssr_ibaraki': { 
-                id: 'ssr_ibaraki', name: '茨木童子', rarity: 'SSR', element: 'FIRE', role: 'DPS', icon: '👹',
-                initCritRate: 0.35, initCritDmg: 1.7, atkSpeed: 1.1, 
-                skillId: 'sk_hell_hand', // 地狱之手
-                lore: '大江山的大妖，被砍断了一只手臂，视酒吞童子为挚友。一拳超人。', tags: ['溢出伤害', '单发核弹']
-            },
-            'ssr_yoto_hime': { 
-                id: 'ssr_yoto_hime', name: '妖刀姬', rarity: 'SSR', element: 'NONE', role: 'DPS', icon: '🗡️',
-                initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.4, 
-                skillId: 'sk_savage_combo', // 杀戮
-                lore: '与巨大妖刀融为一体的少女，战斗时会陷入狂暴的杀戮状态。', tags: ['六段单体', '连斩']
-            },
-            'ssr_shuten': { 
-                id: 'ssr_shuten', name: '酒吞童子', rarity: 'SSR', element: 'FIRE', role: 'DPS', icon: '🍶',
-                initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.2, 
-                skillId: 'sk_mad_drink', // 狂气
-                lore: '大江山的鬼王，曾经威风凛凛，如今却日日借酒浇愁。', tags: ['多段普攻', '不耗火']
-            },
-            'ssr_susabi': { 
-                id: 'ssr_susabi', name: '荒', rarity: 'SSR', element: 'LIGHT', role: 'DPS', icon: '🌠',
-                initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.0, 
-                skillId: 'sk_meteor_shower', // 天罚·星
-                lore: '神明般高贵冷艳的妖怪，能召唤巨大的星辰毁灭一切。', tags: ['协战', '八段AOE']
-            },
-            'ssr_kaguya': { 
-                id: 'ssr_kaguya', name: '辉夜姬', rarity: 'SSR', element: 'LIGHT', role: 'SUPPORT', icon: '🌙',
-                initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, 
-                skillId: 'sk_dragon_jewel', // 龙首之玉
-                lore: '沉睡在竹子中的月之公主，性格内向，带来和平的光辉。', tags: ['打火机', '防御幻境']
-            },
-            'ssr_higanbana': { 
-                id: 'ssr_higanbana', name: '彼岸花', rarity: 'SSR', element: 'DARK', role: 'DPS', icon: '🌺',
-                initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 0.8, // 速度慢，但是先手花海
-                skillId: 'sk_blood_flower', // 赤团华
-                lore: '居住在黄泉河畔的艳丽妖怪，以灵魂为食，铺设死亡的花海。', tags: ['回合外伤害', '躺赢花']
-            },
-            'ssr_tamamo': { 
-                id: 'ssr_tamamo', name: '玉藻前', rarity: 'SSR', element: 'FIRE', role: 'DPS', icon: '🦊',
-                initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.2, 
-                skillId: 'sk_fox_fire', // 堕天/扑朔
-                lore: '绝代大妖，为了纪念死去的妻子而常以女装示人，拥有深不可测的妖力。', tags: ['双重AOE', '击杀连动']
-            },
-            'ssr_shiranui': { 
-                id: 'ssr_shiranui', name: '不知火', rarity: 'SSR', element: 'FIRE', role: 'SUPPORT', icon: '🦋',
-                initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.3, 
-                skillId: 'sk_star_fire', // 星火满天
-                lore: '离岛的绝代歌姬，化身为传说中的大妖怪不知火，起舞时星火连天。', tags: ['普攻连击', '两套技能']
-            },
+            // ------------------ SSR卡 (核心幻神) ------------------
+            'ssr_ootengu': { id: 'ssr_ootengu', name: '大天狗', rarity: 'SSR', role: 'DPS', icon: '🌪️', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.3, skill: { name: '羽刃暴风', desc: '卷起风暴，对敌方全体造成4段伤害', mult: 4.5 }, trait: { name: '钢铁之羽', desc: '免疫一次控制效果，提升攻击力' } },
+            'ssr_ibaraki': { id: 'ssr_ibaraki', name: '茨木童子', rarity: 'SSR', role: 'DPS', icon: '👹', initCritRate: 0.35, initCritDmg: 1.7, atkSpeed: 1.1, skill: { name: '地狱之手', desc: '单体毁灭打击，击杀溢出伤害对全体造成伤害', mult: 3.15 }, trait: { name: '迁怒', desc: '击杀目标溢出伤害无法被分摊' } },
+            'ssr_yoto_hime': { id: 'ssr_yoto_hime', name: '妖刀姬', rarity: 'SSR', role: 'DPS', icon: '🗡️', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.4, skill: { name: '杀戮', desc: '对单体造成6段伤害，击杀后自动转向残血目标', mult: 4.0 }, trait: { name: '幽锋', desc: '造成伤害时概率附加额外真实伤害' } },
+            'ssr_shuten': { id: 'ssr_shuten', name: '酒吞童子', rarity: 'SSR', role: 'DPS', icon: '🍶', initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '狂啸', desc: '消耗所有狂气回复生命', mult: 1.0 }, trait: { name: '狂气', desc: '受击或回合结束积攒狂气，每层增加一次普攻连击' } },
+            'ssr_susabi': { id: 'ssr_susabi', name: '荒', rarity: 'SSR', role: 'DPS', icon: '🌠', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.0, skill: { name: '天罚·星', desc: '消耗所有鬼火，召唤等量流星造成连击', mult: 5.0 }, trait: { name: '星辰之境', desc: '幻境中队友普攻时有概率协战' } },
+            'ssr_kaguya': { id: 'ssr_kaguya', name: '辉夜姬', rarity: 'SSR', role: 'SUPPORT', icon: '🌙', initCritRate: 0.10, initCritDmg: 1.5, atkSpeed: 1.1, skill: { name: '龙首之玉', desc: '展开幻境，提升全队防御和抵抗', mult: 0.5 }, trait: { name: '火鼠裘', desc: '幻境中队友受击和行动有概率产火' } },
+            'ssr_higanbana': { id: 'ssr_higanbana', name: '彼岸花', rarity: 'SSR', role: 'DPS', icon: '🌺', initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 0.8, skill: { name: '血之花海', desc: '布置花海，敌方行动前受到伤害', mult: 1.5 }, trait: { name: '赤团华', desc: '生命越低，花海层数越多，伤害越高' } },
+            'ssr_tamamo': { id: 'ssr_tamamo', name: '玉藻前', rarity: 'SSR', role: 'DPS', icon: '🦊', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.2, skill: { name: '堕天', desc: '对敌方全体造成巨额伤害', mult: 2.89 }, trait: { name: '扑朔迷离', desc: '击杀目标后立即无消耗释放单体/群体追击' } },
+            'ssr_shiranui': { id: 'ssr_shiranui', name: '不知火', rarity: 'SSR', role: 'SUPPORT', icon: '🦋', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '星火满天', desc: '创造结界，使队友普攻后额外进行一次普攻', mult: 1.0 }, trait: { name: '离影', desc: '致命伤害时满血复活，切换为纯输出形态' } },
+            'ssr_orochi': { id: 'ssr_orochi', name: '八岐大蛇', rarity: 'SSR', role: 'DPS', icon: '🐍', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.2, skill: { name: '神念之影', desc: '使队友获得新回合与无敌，随后转化为蛇魔', mult: 2.0 }, trait: { name: '八岐之影', desc: '全队阵亡后取代阴阳师，操控蛇魔喷吐巨额伤害' } },
+            'ssr_taishakuten': { id: 'ssr_taishakuten', name: '帝释天', rarity: 'SSR', role: 'SUPPORT', icon: '🪷', initCritRate: 0.25, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '无垢莲华', desc: '施加金莲，操控敌方行动', mult: 1.5 }, trait: { name: '王之盛宴', desc: '回合外造成伤害时回复全队生命' } },
+            'ssr_ashura': { id: 'ssr_ashura', name: '阿修罗', rarity: 'SSR', role: 'DPS', icon: '🔥', initCritRate: 0.40, initCritDmg: 1.8, atkSpeed: 1.1, skill: { name: '炼狱虐杀', desc: '对全体造成极高伤害并追加多段单体伤害', mult: 5.5 }, trait: { name: '理性', desc: '击杀消耗理性，理性归零进入无差别攻击狂暴状态' } },
+            'ssr_susanoo': { id: 'ssr_susanoo', name: '须佐之男', rarity: 'SSR', role: 'DPS', icon: '⚡', initCritRate: 0.35, initCritDmg: 1.7, atkSpeed: 1.3, skill: { name: '天雷万象', desc: '对单体造成6段毁灭性雷击伤害', mult: 4.8 }, trait: { name: '神威', desc: '队友释放技能时协助降下天雷' } },
+            'ssr_suzuka': { id: 'ssr_suzuka', name: '铃鹿御前', rarity: 'SSR', role: 'DPS', icon: '🏹', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.3, skill: { name: '万羽浪行', desc: '对全体造成5段伤害，吸取攻击力', mult: 3.5 }, trait: { name: '麓魂', desc: '释放技能叠加护盾和攻击增益' } },
+            'ssr_senhime': { id: 'ssr_senhime', name: '千姬', rarity: 'SSR', role: 'SUPPORT', icon: '🧜‍♀️', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.3, skill: { name: '海潮之梦', desc: '召唤海原贝戟，提供打火、增伤、回血', mult: 1.0 }, trait: { name: '悲歌', desc: '拔出贝戟时造成全屏真实AOE伤害' } },
+            'ssr_takiyashahime': { id: 'ssr_takiyashahime', name: '泷夜叉姬', rarity: 'SSR', role: 'DPS', icon: '🌙', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.3, skill: { name: '月之奥义', desc: '可切换形态的AOE伤害（推条/无视御魂/驱散）', mult: 3.2 }, trait: { name: '月之佑', desc: '回合结束叠加暴击伤害提升' } },
 
-            // ------------------ SP卡序列 (典藏神卡) ------------------
-            'sp_iba': { 
-                id: 'sp_iba', name: '炼狱茨木童子', rarity: 'SP', element: 'FIRE', role: 'DPS', icon: '🔥',
-                initCritRate: 0.40, initCritDmg: 1.8, atkSpeed: 1.2, 
-                skillId: 'sk_hell_gate', 
-                lore: '双臂俱全的全盛时期，炼狱之火足以焚尽一切。', tags: ['开局核弹', '狗粮大队长']
-            },
-            'sp_tengu': { 
-                id: 'sp_tengu', name: '少羽大天狗', rarity: 'SP', element: 'WIND', role: 'DPS', icon: '🌪️',
-                initCritRate: 0.35, initCritDmg: 1.7, atkSpeed: 1.5, 
-                skillId: 'sk_wind_vortex', 
-                lore: '年少时期的大天狗，力量尚未完全成熟，但风暴的威力已具雏形。', tags: ['单体多段', '加速']
-            }
+            // ------------------ SP卡 (毁天灭地) ------------------
+            'sp_iba': { id: 'sp_iba', name: '炼狱茨木童子', rarity: 'SP', role: 'DPS', icon: '🌋', initCritRate: 0.40, initCritDmg: 1.8, atkSpeed: 1.2, skill: { name: '炼狱之门', desc: '抓取单体并引发全屏巨额伤害', mult: 5.0 }, trait: { name: '狂意', desc: '若敌方存活，追加一次强力单体伤害' } },
+            'sp_shuten': { id: 'sp_shuten', name: '鬼王酒吞童子', rarity: 'SP', role: 'SUPPORT', icon: '👑', initCritRate: 0.30, initCritDmg: 1.6, atkSpeed: 1.3, skill: { name: '天火怒焱', desc: '推退敌方行动条并驱散，我方扣血换取巨额增伤和免控', mult: 2.0 }, trait: { name: '红莲', desc: '回合内免疫控制，队友生命越低伤害越高' } },
+            'sp_otakemaru': { id: 'sp_otakemaru', name: '麓铭大岳丸', rarity: 'SP', role: 'DPS', icon: '⛰️', initCritRate: 0.40, initCritDmg: 1.8, atkSpeed: 1.1, skill: { name: '断山', desc: '对全体造成高额伤害并附加晕眩', mult: 3.8 }, trait: { name: '麓泽', desc: '场上阵亡3个单位后进入第二形态，释放技能不耗火且伤害极高' } },
+            'sp_orochi': { id: 'sp_orochi', name: '神堕八岐大蛇', rarity: 'SP', role: 'DPS', icon: '🐍', initCritRate: 0.45, initCritDmg: 1.9, atkSpeed: 1.2, skill: { name: '审判仪式', desc: '剥夺全队最大生命值，积攒能量引发灭世之剑', mult: 6.0 }, trait: { name: '神堕', desc: '释放大招后重置阵亡队友复活倒计时' } },
+            'sp_kaguya': { id: 'sp_kaguya', name: '因幡辉夜姬', rarity: 'SP', role: 'SUPPORT', icon: '🌕', initCritRate: 0.20, initCritDmg: 1.5, atkSpeed: 1.2, skill: { name: '月之赐福', desc: '提供特殊愿力鬼火，大幅提升全队暴击伤害', mult: 1.0 }, trait: { name: '愿力', desc: '突破鬼火上限，愿力可代替鬼火消耗' } },
+            'sp_susabi': { id: 'sp_susabi', name: '神启荒', rarity: 'SP', role: 'DPS', icon: '🌌', initCritRate: 0.35, initCritDmg: 1.7, atkSpeed: 1.2, skill: { name: '星辰陨落', desc: '召唤星陨对敌方全体造成多段伤害', mult: 4.5 }, trait: { name: '星陨', desc: '敌方行动且不耗火时，必定遭到星陨反击' } }
         },
 
-        /**
-         * 5. 关卡推图生成配置 (Stage Generators)
-         * 咸鱼模式：无尽的关卡，每一关的Boss血量呈公式化膨胀。
-         */
-        Stages: {
-            Zones: [
-                { id: 'z1', name: '雀之森', bg: 'forest',   startStage: 1,   endStage: 100 },
-                { id: 'z2', name: '黑夜山', bg: 'mountain', startStage: 101, endStage: 500 },
-                { id: 'z3', name: '荒川',   bg: 'river',    startStage: 501, endStage: 1000 },
-                { id: 'z4', name: '大江山', bg: 'volcano',  startStage: 1001,endStage: 5000 },
-                { id: 'z5', name: '逢魔之原',bg: 'abyss',   startStage: 5001,endStage: 99999 }
-            ],
-            Bosses: [
-                { name: '八岐大蛇', icon: '🐉', type: 'BOSS' },
-                { name: '石距', icon: '🐙', type: 'BOSS' },
-                { name: '业原火', icon: '🎭', type: 'BOSS' },
-                { name: '麒麟', icon: '🦌', type: 'BOSS' },
-                { name: '土蜘蛛', icon: '🕷️', type: 'BOSS' }
-            ],
+        // =========================================================
+        // 关卡推图生成配置
+        // =========================================================
+        Stage: {
             Formula: {
-                // 血量 = baseHp * (hpMult ^ (当前关卡 - 1))
-                baseHp: 500,
-                hpMult: 1.25, 
-                
-                // 金币掉落 = baseCoin + (coinStep * 当前关卡)
-                baseCoin: 100,
-                coinStep: 50,
-                
-                // 每通关一关给的基础勾玉
-                baseJade: 10,
-                
-                // 每逢10的整数关卡是Boss关，血量和掉落翻倍
-                bossMultiplier: 5
-            }
+                baseHp: 500, hpMult: 1.25, 
+                baseCoin: 100, coinStep: 50, baseJade: 10, bossMultiplier: 5
+            },
+            Bosses: [ { icon: '🐉' }, { icon: '🐙' }, { icon: '🎭' }, { icon: '🦌' }, { icon: '🕷️' } ]
         },
 
-        /**
-         * 6. 卡池抽取配置 (Gacha Banners)
-         * 支持后续加入定向UP池、新手池等。目前配置为常驻池。
-         */
         Gacha: {
-            StandardBanner: {
-                name: '常驻祈愿',
-                costType: 'jade',
-                costPerPull: 100,
-                tenPullDiscount: 1000, // 十连不打折，但送保底
-                pityLimit: 100,        // 100抽保底SSR
-                pools: ['N', 'R', 'SR', 'SSR', 'SP'] // 该卡池可出的稀有度
-            }
+            StandardBanner: { costType: 'jade', costPerPull: 100, tenPullDiscount: 1000, pityLimit: 100 }
         }
     };
-
-    // ---------------------------------------------------------
-    // [第二部分结束] 请在下方粘贴 [第三部分：玩家状态] 的代码
-    // ---------------------------------------------------------
     // ========================================================================
     // [第三部分：玩家状态与存储引擎 (Player State & Persistance Engine)]
     // 设计理念：所有动态数据集中管理，严禁外部直接修改，必须通过专属接口调用。
