@@ -2400,6 +2400,87 @@
             this._handleEnemyDeath();
         }
     };
+    // ========================================================================
+    // [暗号系统终极修复补丁 (Redeem System Ultimate Fix)]
+    // 强制清除缓存记录，确保 8888 和 6699 都能完美触发福利！
+    // ========================================================================
+
+    // 1. 强制清空旧档里的兑换记录，让你能重新领取神明赐福！
+    if (!GameApp.State.Data.redeemedCodes) GameApp.State.Data.redeemedCodes = {};
+    GameApp.State.Data.redeemedCodes["8888"] = false;
+    GameApp.State.Data.redeemedCodes["6699"] = false;
+
+    // 2. 重新绑定完美的和风弹窗与核对逻辑
+    GameApp.UI.openRedeemCode = function() {
+        const existingModal = document.getElementById('custom-redeem-modal');
+        if (existingModal) existingModal.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'custom-redeem-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000;
+            display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--bg-panel); border: 2px solid #fbbf24; border-radius: 15px; padding: 25px; text-align: center; width: 85%; max-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.9);">
+                <div style="font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 15px #fbbf24;">⛩️</div>
+                <h3 style="color: #fbbf24; margin-bottom: 20px; letter-spacing: 2px;">神龛暗号</h3>
+                <input type="text" id="redeem-input" placeholder="输入 8888 或 6699" autocomplete="off" style="
+                    width: 100%; padding: 12px; margin-bottom: 20px; background: #111; border: 1px solid #5b4b70; 
+                    color: #fff; border-radius: 8px; text-align: center; font-size: 1.2rem; outline: none; box-sizing: border-box; font-weight: bold;
+                ">
+                <div style="display: flex; gap: 15px;">
+                    <button id="btn-redeem-cancel" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #3d324c; color: #fff; font-weight: bold; cursor: pointer;">取消</button>
+                    <button id="btn-redeem-confirm" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: linear-gradient(90deg, #d97706, #b45309); color: #fff; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);">兑换</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('redeem-input').focus();
+
+        document.getElementById('btn-redeem-cancel').onclick = () => {
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 200);
+        };
+
+        document.getElementById('btn-redeem-confirm').onclick = () => {
+            let code = document.getElementById('redeem-input').value.trim();
+            if (!code) return;
+
+            if (code === "6699") {
+                if (GameApp.State.Data.redeemedCodes["6699"]) {
+                    GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+                } else {
+                    GameApp.State.modifyResource('jade', 100000000);
+                    GameApp.State.Data.redeemedCodes["6699"] = true;
+                    GameApp.UI.toast("🎉 兑换成功！获得 1 亿 勾玉！");
+                    GameApp.Storage.save();
+                }
+            } else if (code === "8888") {
+                if (GameApp.State.Data.redeemedCodes["8888"]) {
+                    GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+                } else {
+                    // 发放 1000 兆金币
+                    GameApp.State.modifyResource('coins', 1000000000000000); 
+                    GameApp.State.Data.redeemedCodes["8888"] = true;
+                    GameApp.UI.toast("🎉 兑换成功！获得 1000兆 金币！");
+                    GameApp.Storage.save();
+                }
+            } else {
+                GameApp.UI.toast("暗号无效或已过期！", true);
+            }
+
+            modal.remove();
+            GameApp.UI.updateResources();
+            
+            // 如果玩家停留在式神录界面，强制刷新以激活“强化”按钮
+            if (document.getElementById('view-roster').classList.contains('active')) {
+                GameApp.UI.renderRoster();
+            }
+        };
+    };
 </script>
 </body>
 </html>
