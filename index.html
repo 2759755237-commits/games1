@@ -3,85 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文明余烬 (Embers of Civilization)</title>
+    <title>文明余烬 - 黑夜危机</title>
     <style>
         :root {
-            --bg-color: #0f0f11;
-            --panel-bg: #1a1a1e;
-            --text-main: #d1d1d6;
-            --text-muted: #6e6e76;
-            --accent: #d4af37;
-            --danger: #ff4c4c;
-            --border: #2a2a35;
+            --bg-day: #1a1a24;
+            --bg-night: #08080a;
+            --panel-bg: rgba(26, 26, 30, 0.9);
+            --text-main: #e0e0e4;
+            --text-muted: #7a7a85;
+            --accent: #f39c12;
+            --danger: #e74c3c;
+            --magic: #9b59b6;
+            --border: #333;
         }
 
         body {
-            background-color: var(--bg-color);
+            background-color: var(--bg-day);
             color: var(--text-main);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center;
+            transition: background-color 3s ease; /* 昼夜渐变动画 */
+            user-select: none; /* 防止频繁点击时选中文本 */
         }
 
-        #game-container {
-            width: 100%;
-            max-width: 1000px;
-            display: grid;
-            grid-template-columns: 250px 1fr 300px;
-            gap: 20px;
-        }
+        body.night-mode { background-color: var(--bg-night); }
 
-        .panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        h2, h3 { color: var(--accent); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 5px; font-size: 1.1em;}
-        
+        #game-container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 250px 1fr 300px; gap: 20px; }
+        .panel { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+        h2, h3 { color: var(--accent); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
         .hidden { display: none !important; }
         
-        /* 资源列表 */
+        /* 天气与节律 UI */
+        #world-state { text-align: center; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; padding: 10px; border-radius: 5px; background: rgba(0,0,0,0.3); }
+        .state-day { color: #f1c40f; }
+        .state-night { color: #3498db; }
+        
         .resource-row { display: flex; justify-content: space-between; margin: 8px 0; }
         .res-name { font-weight: bold; }
         .res-rate { font-size: 0.8em; color: var(--text-muted); }
-        .res-danger { color: var(--danger); }
-
-        /* 按钮样式 */
-        button {
-            background: transparent;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: 100%;
-            margin-bottom: 10px;
-            text-align: left;
-        }
-        button:hover:not(:disabled) { background: #25252b; border-color: var(--accent); }
-        button:disabled { color: var(--text-muted); cursor: not-allowed; opacity: 0.5; }
+        
+        button { background: #222; color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 6px; cursor: pointer; transition: all 0.1s; width: 100%; margin-bottom: 10px; text-align: left; position: relative; overflow: hidden; font-size: 1em; }
+        button:hover:not(:disabled) { background: #2c2c35; border-color: var(--accent); transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(2px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
         button .cost { font-size: 0.8em; color: var(--text-muted); float: right; }
 
-        /* 职业分配 */
-        .job-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 5px; background: #222; border-radius: 4px;}
-        .job-controls button { width: 30px; margin: 0 2px; text-align: center; padding: 4px; }
+        /* 连击条 UI */
+        #combo-container { margin-top: 10px; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+        #combo-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s; }
+        #combo-text { color: var(--accent); font-weight: bold; text-align: right; font-size: 0.9em; margin-top: 5px;}
 
-        /* 日志 */
-        #log-container { height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.9em; display: flex; flex-direction: column-reverse;}
-        .log-entry { margin-bottom: 5px; border-bottom: 1px dashed #333; padding-bottom: 5px;}
+        /* 神秘资源 */
+        .magic-text { color: var(--magic); text-shadow: 0 0 5px rgba(155, 89, 182, 0.5); }
+
+        #log-container { height: 450px; overflow-y: auto; font-family: monospace; font-size: 0.9em; display: flex; flex-direction: column-reverse; }
+        .log-entry { margin-bottom: 6px; border-bottom: 1px dashed #333; padding-bottom: 6px; animation: fadeIn 0.3s; }
         .log-time { color: var(--text-muted); margin-right: 10px; }
+
+        /* 视觉特效：点击飘字 */
+        .floating-text { position: fixed; pointer-events: none; font-weight: bold; animation: floatUp 1s ease-out forwards; z-index: 1000; }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div class="panel" id="resources-panel">
+    <div class="panel">
+        <div id="world-state" class="state-day">☀️ 温暖的白昼 (安全)</div>
+        
         <h2>物资储备</h2>
         <div class="resource-row">
             <span class="res-name">木材</span>
@@ -91,290 +85,309 @@
             <span class="res-name">食物</span>
             <span><span id="res-food">0</span> <span id="rate-food" class="res-rate">(+0/s)</span></span>
         </div>
-        
-        <h3 class="hidden" id="title-pop" style="margin-top: 20px;">营地人口</h3>
-        <div class="resource-row hidden" id="row-pop">
-            <span class="res-name">空闲村民</span>
-            <span><span id="pop-idle">0</span> / <span id="pop-max">0</span></span>
+        <div class="resource-row hidden magic-text" id="row-shard">
+            <span class="res-name">异象碎片</span>
+            <span id="res-shard">0</span>
         </div>
-        <div id="food-warning" class="res-danger hidden" style="font-size: 0.8em; margin-top: 5px;">警告：食物短缺！村民即将饿死！</div>
+        
+        <h3 class="hidden" id="title-pop" style="margin-top: 20px;">营地状况</h3>
+        <div class="resource-row hidden" id="row-pop">
+            <span class="res-name">存活村民</span>
+            <span><span id="pop-total">0</span> / <span id="pop-max">0</span></span>
+        </div>
+        <div id="warning-msg" style="color: var(--danger); font-size: 0.85em; margin-top: 10px; font-weight: bold;"></div>
     </div>
 
-    <div class="panel" id="main-panel">
-        <h2>行动与建设</h2>
-        
-        <button id="btn-gather-wood" onclick="manualGatherWood()">
-            徒手捡拾树枝 <span class="cost">+1 木材</span>
+    <div class="panel">
+        <h2>荒野行动</h2>
+        <button onclick="manualGatherWood(event)">
+            徒手拾取木材 <span class="cost">+<span id="click-power">1</span> 木材</span>
         </button>
-        <button id="btn-gather-food" class="hidden" onclick="manualGatherFood()">
-            采摘野果 <span class="cost">+1 食物</span>
+        
+        <div id="combo-text" class="hidden">狂热采集! 倍率 x<span id="combo-mult">1</span></div>
+        <div id="combo-container" class="hidden"><div id="combo-bar"></div></div>
+
+        <button id="btn-gather-food" class="hidden" onclick="manualGatherFood(event)" style="margin-top:15px;">
+            在灌木丛寻找浆果 <span class="cost">+1 食物</span>
         </button>
 
-        <h3 style="margin-top: 20px;" class="hidden" id="title-build">基础设施</h3>
-        
+        <h3 style="margin-top: 25px;" class="hidden" id="title-build">营地建设</h3>
         <button id="btn-build-fire" class="hidden" onclick="buildCampfire()">
-            升起篝火 <span class="cost" id="cost-fire">10 木材</span>
-            <div style="font-size: 0.8em; color: var(--text-muted);">吸引流浪者，解锁食物与人口系统</div>
+            升起篝火 <span class="cost" id="cost-fire">20 木材</span>
+            <div style="font-size: 0.8em; color: var(--text-muted);">抵御严寒，吸引流浪者</div>
         </button>
-
         <button id="btn-build-hut" class="hidden" onclick="buildHut()">
             建造茅草屋 <span class="cost">木材: <span id="cost-hut">30</span></span>
-            <div style="font-size: 0.8em; color: var(--text-muted);">提供居住空间 (人口上限 +2)</div>
+            <div style="font-size: 0.8em; color: var(--text-muted);">人口上限 +2</div>
         </button>
-        
-        <div id="job-panel" class="hidden" style="margin-top: 20px;">
-            <h3>劳动力分配</h3>
-            <div class="job-row">
-                <span>伐木工 (产出木材)</span>
-                <div class="job-controls">
-                    <button onclick="assignJob('woodcutter', -1)">-</button>
-                    <span id="job-woodcutter">0</span>
-                    <button onclick="assignJob('woodcutter', 1)">+</button>
-                </div>
-            </div>
-            <div class="job-row">
-                <span>采集者 (产出食物)</span>
-                <div class="job-controls">
-                    <button onclick="assignJob('gatherer', -1)">-</button>
-                    <span id="job-gatherer">0</span>
-                    <button onclick="assignJob('gatherer', 1)">+</button>
-                </div>
-            </div>
+
+        <div id="mystic-panel" class="hidden" style="margin-top: 25px; border: 1px solid var(--magic); padding: 10px; border-radius: 5px;">
+            <h3 class="magic-text" style="border-bottom-color: var(--magic);">深渊启示</h3>
+            <button onclick="researchMagic()" style="border-color: var(--magic);">
+                研读异象碎片 <span class="cost">1 碎片</span>
+                <div style="font-size: 0.8em; color: var(--text-muted);">解锁未知维度的力量...</div>
+            </button>
         </div>
     </div>
 
-    <div class="panel" id="log-panel">
+    <div class="panel">
         <h2>世界回响</h2>
         <div id="log-container"></div>
     </div>
 </div>
 
 <script>
-    /* ================= 游戏核心数据状态 ================= */
+    // 状态机
     const state = {
-        resources: {
-            wood: 0,
-            food: 0
-        },
-        population: {
-            total: 0,
-            idle: 0,
-            max: 0
-        },
-        jobs: {
-            woodcutter: 0,
-            gatherer: 0
-        },
-        buildings: {
-            campfire: 0,
-            hut: 0
-        },
-        flags: {
-            fireUnlocked: false,
-            hutUnlocked: false
-        },
-        rates: {
-            foodConsumptionPerPop: 0.5, // 每个村民每秒消耗食物
-            woodPerCutter: 1,           // 每个伐木工每秒产木材
-            foodPerGatherer: 1.2        // 每个采集者每秒产食物
-        }
+        res: { wood: 0, food: 0, shard: 0 },
+        pop: { total: 0, max: 0 },
+        bld: { campfire: 0, hut: 0 },
+        time: { tick: 0, isNight: false, dayLength: 30, nightLength: 20 }, // 白天30秒，黑夜20秒
+        combo: { count: 0, timer: 0, maxTime: 1.5 }, // 1.5秒不点断连击
+        flags: { fireUnlocked: false, magicUnlocked: false }
     };
 
-    /* ================= 核心操作函数 ================= */
-    function manualGatherWood() {
-        state.resources.wood += 1;
+    // 核心操作：附带漂浮文字和连击判定
+    function manualGatherWood(e) {
+        // 连击逻辑
+        state.combo.count += 1;
+        state.combo.timer = state.combo.maxTime;
+        
+        let multiplier = 1;
+        if (state.combo.count > 10) multiplier = 2;
+        if (state.combo.count > 30) multiplier = 3;
+        if (state.combo.count > 60) multiplier = 5;
+
+        const gain = 1 * multiplier;
+        state.res.wood += gain;
+
+        // 视觉反馈：飘字
+        spawnFloatingText(e.clientX, e.clientY, `+${gain}`, '#f39c12');
+        updateComboUI(multiplier);
+
+        // 随机掉落系统 (1%几率掉落碎片)
+        if (state.bld.campfire > 0 && Math.random() < 0.01) {
+            state.res.shard += 1;
+            spawnFloatingText(e.clientX, e.clientY - 20, "✨ 获得异象碎片!", '#9b59b6');
+            logEvent("<span class='magic-text'>你在树根下挖出了一块散发着微光的诡异碎片。</span>");
+            checkMagicUnlock();
+        }
+
         checkUnlocks();
         updateUI();
     }
 
-    function manualGatherFood() {
-        state.resources.food += 1;
+    function manualGatherFood(e) {
+        state.res.food += 1;
+        spawnFloatingText(e.clientX, e.clientY, "+1", '#2ecc71');
         updateUI();
     }
 
     function buildCampfire() {
-        if (state.resources.wood >= 10 && state.buildings.campfire === 0) {
-            state.resources.wood -= 10;
-            state.buildings.campfire = 1;
-            state.population.max = 2; // 篝火提供初始2个人口容量
-            state.population.total = 1; // 吸引第一个人
-            state.population.idle = 1;
-            logEvent("火光刺破了黑暗。一个流浪者被温暖吸引，加入了你的营地。你现在需要寻找食物来养活他们。");
-            checkUnlocks();
-            updateUI();
+        if (state.res.wood >= 20 && state.bld.campfire === 0) {
+            state.res.wood -= 20;
+            state.bld.campfire = 1;
+            state.pop.max = 2; state.pop.total = 1;
+            logEvent("篝火燃起。一个流浪者加入了你。但他每天都会消耗食物，且夜晚篝火必须燃烧木材取暖。");
+            document.getElementById('btn-build-fire').classList.add('hidden');
+            checkUnlocks(); updateUI();
         }
     }
-
-    // 指数级成本计算公式: 基础成本 * (1.15 ^ 建筑数量)
-    function getHutCost() { return Math.floor(30 * Math.pow(1.15, state.buildings.hut)); }
 
     function buildHut() {
-        const cost = getHutCost();
-        if (state.resources.wood >= cost) {
-            state.resources.wood -= cost;
-            state.buildings.hut += 1;
-            state.population.max += 2;
-            logEvent(`一座新的茅草屋建成了。营地可以容纳更多人了 (当前上限: ${state.population.max})。`);
+        const cost = Math.floor(30 * Math.pow(1.2, state.bld.hut));
+        if (state.res.wood >= cost) {
+            state.res.wood -= cost;
+            state.bld.hut += 1;
+            state.pop.max += 2;
+            logEvent("新茅草屋建成，营地规模扩大了。");
             updateUI();
         }
     }
 
-    /* ================= 职业分配系统 ================= */
-    function assignJob(jobType, amount) {
-        if (amount > 0) {
-            // 分配工作：必须有空闲人口
-            if (state.population.idle >= amount) {
-                state.population.idle -= amount;
-                state.jobs[jobType] += amount;
-            }
-        } else {
-            // 取消工作：该岗位必须有人
-            if (state.jobs[jobType] >= Math.abs(amount)) {
-                state.jobs[jobType] += amount; // amount是负数，所以是减少
-                state.population.idle += Math.abs(amount);
-            }
+    function researchMagic() {
+        if (state.res.shard >= 1) {
+            state.res.shard -= 1;
+            logEvent("<span class='magic-text'>你注视着碎片，脑海中涌入了疯狂的知识。自动采集效率永久提升 50%！</span>");
+            // 这里可以加入深度的科技树逻辑
+            updateUI();
         }
-        updateUI();
     }
 
-    /* ================= 系统解锁机制 ================= */
+    // 飘字特效函数
+    function spawnFloatingText(x, y, text, color) {
+        const el = document.createElement('div');
+        el.className = 'floating-text';
+        el.style.left = (x - 10 + (Math.random()*20)) + 'px'; // 稍微随机偏移
+        el.style.top = (y - 20) + 'px';
+        el.style.color = color;
+        el.innerHTML = text;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000); // 动画结束后清理DOM
+    }
+
+    // 主循环 (处理日夜交替、连击衰减与资源消耗)
+    let lastTime = Date.now();
+    function loop() {
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+
+        // 连击衰减逻辑
+        if (state.combo.count > 0) {
+            state.combo.timer -= dt;
+            const bar = document.getElementById('combo-bar');
+            bar.style.width = (state.combo.timer / state.combo.maxTime * 100) + '%';
+            if (state.combo.timer <= 0) {
+                state.combo.count = 0;
+                document.getElementById('combo-text').classList.add('hidden');
+                document.getElementById('combo-container').classList.add('hidden');
+                document.getElementById('click-power').textContent = 1;
+            }
+        }
+
+        // 昼夜节律与生存结算 (拥有篝火后开启)
+        if (state.bld.campfire > 0) {
+            state.time.tick += dt;
+            let cycleLength = state.time.isNight ? state.time.nightLength : state.time.dayLength;
+            
+            if (state.time.tick >= cycleLength) {
+                state.time.tick = 0;
+                state.time.isNight = !state.time.isNight;
+                document.body.classList.toggle('night-mode');
+                
+                const ws = document.getElementById('world-state');
+                if (state.time.isNight) {
+                    ws.className = 'state-night';
+                    ws.innerHTML = "🌙 极寒之夜 (木材消耗加剧)";
+                    logEvent("夜幕降临，寒风呼啸。篝火需要更多木材来维持温度。");
+                } else {
+                    ws.className = 'state-day';
+                    ws.innerHTML = "☀️ 温暖的白昼 (安全)";
+                    logEvent("太阳升起，温度回升了。趁现在多囤积些物资吧。");
+                }
+            }
+
+            // 自动化结算
+            let woodNet = 0;
+            let foodNet = 0;
+            let warningText = "";
+
+            // 食物消耗: 每人每秒吃 0.5
+            foodNet -= state.pop.total * 0.5;
+            
+            // 夜晚木材消耗: 抵御严寒每秒扣除 2 木头
+            if (state.time.isNight) woodNet -= 2;
+
+            state.res.wood += woodNet * dt;
+            state.res.food += foodNet * dt;
+
+            // 危机判定: 冻死或饿死
+            if (state.res.food < 0) {
+                state.res.food = 0;
+                if (Math.random() < 0.2 * dt && state.pop.total > 0) { // 挨饿有几率死亡
+                    state.pop.total -= 1;
+                    logEvent("<span style='color:#e74c3c'>饥荒！一名村民饿死了。</span>");
+                }
+                warningText += "⚠️ 食物耗尽！村民正在挨饿。<br>";
+            }
+
+            if (state.res.wood < 0 && state.time.isNight) {
+                state.res.wood = 0;
+                if (Math.random() < 0.4 * dt && state.pop.total > 0) { // 冻死几率更高
+                    state.pop.total -= 1;
+                    logEvent("<span style='color:#e74c3c'>篝火熄灭了... 一名村民在严寒中冻死了。</span>");
+                }
+                warningText += "❄️ 缺乏木材！营地温度致命。<br>";
+            }
+
+            // 人口恢复 (白天，有余粮，且没满)
+            if (!state.time.isNight && state.res.food > 20 && state.pop.total < state.pop.max) {
+                if (Math.random() < 0.05 * dt) {
+                    state.pop.total += 1;
+                    logEvent("一个躲避严寒的流浪者加入了营地。");
+                }
+            }
+
+            document.getElementById('warning-msg').innerHTML = warningText;
+            
+            // UI速率显示更新
+            document.getElementById('rate-wood').textContent = `(${woodNet < 0 ? '' : '+'}${woodNet.toFixed(1)}/s)`;
+            document.getElementById('rate-wood').style.color = woodNet < 0 ? 'var(--danger)' : 'var(--text-muted)';
+            document.getElementById('rate-food').textContent = `(${foodNet < 0 ? '' : '+'}${foodNet.toFixed(1)}/s)`;
+            document.getElementById('rate-food').style.color = foodNet < 0 ? 'var(--danger)' : 'var(--text-muted)';
+        }
+
+        updateUI();
+        requestAnimationFrame(loop);
+    }
+
+    function updateComboUI(mult) {
+        if (state.combo.count > 10) {
+            document.getElementById('combo-text').classList.remove('hidden');
+            document.getElementById('combo-container').classList.remove('hidden');
+            document.getElementById('combo-mult').textContent = mult;
+            document.getElementById('click-power').textContent = 1 * mult;
+            
+            // 连击越高，条的颜色越红
+            const bar = document.getElementById('combo-bar');
+            if(mult >= 5) bar.style.background = '#e74c3c';
+            else if(mult >= 2) bar.style.background = '#f39c12';
+        }
+    }
+
     function checkUnlocks() {
-        // 木材达到5，解锁篝火
-        if (state.resources.wood >= 5 && !state.flags.fireUnlocked) {
+        if (state.res.wood >= 10 && !state.flags.fireUnlocked) {
             document.getElementById('title-build').classList.remove('hidden');
             document.getElementById('btn-build-fire').classList.remove('hidden');
             state.flags.fireUnlocked = true;
-            logEvent("收集的木材足够生火了。你觉得在黑夜中需要一点光明。");
+            logEvent("收集了足够的木材，也许该生火了。黑夜即将到来，我们需要光亮。");
         }
-        
-        // 拥有篝火后，解锁食物面板、采集按钮和职业调度
-        if (state.buildings.campfire > 0) {
-            document.getElementById('btn-build-fire').classList.add('hidden'); // 篝火只能造一次
+        if (state.bld.campfire > 0) {
             document.getElementById('btn-gather-food').classList.remove('hidden');
             document.getElementById('row-food').classList.remove('hidden');
             document.getElementById('title-pop').classList.remove('hidden');
             document.getElementById('row-pop').classList.remove('hidden');
-            document.getElementById('job-panel').classList.remove('hidden');
             
-            // 木材达到20解锁茅草屋
-            if (state.resources.wood >= 20 && !state.flags.hutUnlocked) {
+            if (state.res.wood >= 25) {
                 document.getElementById('btn-build-hut').classList.remove('hidden');
-                state.flags.hutUnlocked = true;
             }
         }
     }
 
-    /* ================= 主循环 (Tick) ================= */
-    let lastTick = Date.now();
-    let starvationTimer = 0;
-
-    function gameLoop() {
-        const now = Date.now();
-        const dt = (now - lastTick) / 1000; // 时间差(秒)，防止浏览器休眠导致时间计算错误
-        lastTick = now;
-
-        if (state.buildings.campfire > 0) {
-            // 1. 计算资源产出
-            const woodGain = state.jobs.woodcutter * state.rates.woodPerCutter * dt;
-            const foodGain = state.jobs.gatherer * state.rates.foodPerGatherer * dt;
-            
-            // 2. 计算食物消耗
-            const foodLoss = state.population.total * state.rates.foodConsumptionPerPop * dt;
-            
-            // 3. 应用资源结算
-            state.resources.wood += woodGain;
-            state.resources.food += foodGain - foodLoss;
-
-            // 4. 生存与惩罚机制 (饥荒)
-            const warningEl = document.getElementById('food-warning');
-            if (state.resources.food <= 0) {
-                state.resources.food = 0;
-                if (state.population.total > 0) {
-                    warningEl.classList.remove('hidden');
-                    starvationTimer += dt;
-                    // 如果断粮超过 5 秒，饿死一个村民
-                    if (starvationTimer >= 5) {
-                        killVillager();
-                        starvationTimer = 0;
-                    }
-                }
-            } else {
-                warningEl.classList.add('hidden');
-                starvationTimer = 0;
-            }
-
-            // 5. 人口自然增长
-            if (state.resources.food > 10 && state.population.total < state.population.max) {
-                // 简单的概率触发：每秒有 2% 概率吸引新村民
-                if (Math.random() < 0.02 * dt) {
-                    state.population.total += 1;
-                    state.population.idle += 1;
-                    logEvent("充足的食物和安全的营地吸引了一名新的流浪者。");
-                }
-            }
+    function checkMagicUnlock() {
+        if (!state.flags.magicUnlocked) {
+            state.flags.magicUnlocked = true;
+            document.getElementById('row-shard').classList.remove('hidden');
+            document.getElementById('mystic-panel').classList.remove('hidden');
         }
-
-        updateUI();
-        requestAnimationFrame(gameLoop); // 使用 requestAnimationFrame 保证动画帧率同步
     }
 
-    function killVillager() {
-        if (state.population.total <= 0) return;
-        state.population.total -= 1;
-        // 优先扣除空闲人口，若无则随机扣除工作人口
-        if (state.population.idle > 0) {
-            state.population.idle -= 1;
-        } else if (state.jobs.gatherer > 0) {
-            state.jobs.gatherer -= 1;
-        } else if (state.jobs.woodcutter > 0) {
-            state.jobs.woodcutter -= 1;
-        }
-        logEvent("<span class='res-danger'>可怕的饥荒！一名村民饿死了...</span>");
-    }
-
-    /* ================= UI 渲染与日志系统 ================= */
     function updateUI() {
-        // 更新资源文本 (向下取整显示)
-        document.getElementById('res-wood').textContent = Math.floor(state.resources.wood);
-        document.getElementById('res-food').textContent = Math.floor(state.resources.food);
-        
-        // 更新速率显示
-        const netFoodRate = (state.jobs.gatherer * state.rates.foodPerGatherer) - (state.population.total * state.rates.foodConsumptionPerPop);
-        document.getElementById('rate-wood').textContent = `(+${(state.jobs.woodcutter * state.rates.woodPerCutter).toFixed(1)}/s)`;
-        
-        const foodRateEl = document.getElementById('rate-food');
-        foodRateEl.textContent = `(${netFoodRate >= 0 ? '+' : ''}${netFoodRate.toFixed(1)}/s)`;
-        foodRateEl.className = netFoodRate < 0 ? 'res-danger' : 'res-rate'; // 负增长标红
+        document.getElementById('res-wood').textContent = Math.floor(state.res.wood);
+        document.getElementById('res-food').textContent = Math.floor(state.res.food);
+        document.getElementById('res-shard').textContent = state.res.shard;
+        document.getElementById('pop-total').textContent = state.pop.total;
+        document.getElementById('pop-max').textContent = state.pop.max;
 
-        // 更新人口和职业
-        document.getElementById('pop-idle').textContent = state.population.idle;
-        document.getElementById('pop-max').textContent = state.population.max;
-        document.getElementById('job-woodcutter').textContent = state.jobs.woodcutter;
-        document.getElementById('job-gatherer').textContent = state.jobs.gatherer;
-
-        // 更新按钮可用性与动态成本
-        document.getElementById('btn-build-fire').disabled = state.resources.wood < 10;
-        
-        const currentHutCost = getHutCost();
-        document.getElementById('cost-hut').textContent = currentHutCost;
-        document.getElementById('btn-build-hut').disabled = state.resources.wood < currentHutCost;
+        document.getElementById('btn-build-fire').disabled = state.res.wood < 20;
+        const hutCost = Math.floor(30 * Math.pow(1.2, state.bld.hut));
+        document.getElementById('cost-hut').textContent = hutCost;
+        document.getElementById('btn-build-hut').disabled = state.res.wood < hutCost;
     }
 
     function logEvent(msg) {
         const container = document.getElementById('log-container');
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        
         const now = new Date();
         const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        
         entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${msg}`;
-        container.prepend(entry); // 新日志加在最上面
+        container.prepend(entry);
     }
 
-    // 启动游戏
-    logEvent("你独自在荒野中醒来。寒冷刺骨，你需要马上收集一些柴火。");
-    requestAnimationFrame(gameLoop);
+    logEvent("空气中弥漫着危险的气息。在你被冻僵之前，迅速收集木材吧。");
+    requestAnimationFrame(loop);
 
 </script>
 </body>
