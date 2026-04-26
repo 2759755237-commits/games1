@@ -2,400 +2,563 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>末日拾荒者 (Mobile 原生版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS-OS [v1.0.4] - Secure Terminal</title>
     <style>
+        /* ================= 赛博朋克 CRT 视觉系统 ================= */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
         :root {
-            --bg-dark: #121212;
-            --surface: #1e1e1e;
-            --primary: #4CAF50;
-            --primary-dark: #2E7D32;
-            --text-main: #ffffff;
-            --text-muted: #aaaaaa;
-            --danger: #ef5350;
-            --rare: #ab47bc;
-            --nav-height: 65px;
+            --bg: #050a08;
+            --glow: #0f0;
+            --glow-dark: #004400;
+            --glow-alert: #f00;
+            --window-bg: rgba(5, 15, 10, 0.9);
+            --border: 1px solid #0f0;
+            --font: 'Share Tech Mono', monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-        
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+            background-color: var(--bg);
+            color: var(--glow);
+            font-family: var(--font);
             height: 100vh;
-            display: flex;
-            flex-direction: column;
             overflow: hidden;
-        }
-
-        /* 顶部资源仪表盘 */
-        .header-dashboard {
-            background-color: var(--surface);
-            padding: env(safe-area-inset-top) 15px 15px 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
-        .res-grid { display: flex; justify-content: space-between; margin-top: 10px; }
-        .res-item { text-align: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; flex: 1; margin: 0 5px; }
-        .res-value { font-size: 1.2rem; font-weight: bold; font-family: monospace; }
-        .res-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-
-        /* 中间内容区 */
-        .content-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: calc(var(--nav-height) + 20px); /* 防底部遮挡 */
-        }
-
-        /* 标签页控制 */
-        .tab-view { display: none; animation: fadeIn 0.2s ease-out; }
-        .tab-view.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 超爽大按钮 (Juicy Button) */
-        .btn-huge {
-            width: 100%;
-            height: 120px;
-            background: var(--primary);
-            border: none;
-            border-radius: 20px;
-            color: white;
-            font-size: 1.8rem;
-            font-weight: bold;
-            box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(0,0,0,0.4);
-            transition: transform 0.1s, box-shadow 0.1s;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-top: 30px;
-            position: relative;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
         }
-        .btn-huge:active {
-            transform: translateY(8px);
-            box-shadow: 0 0 0 var(--primary-dark), 0 5px 10px rgba(0,0,0,0.4);
-        }
-        .btn-huge-sub { font-size: 0.9rem; font-weight: normal; opacity: 0.8; margin-top: 5px; }
 
-        /* 卡片列表 (手机端标准UI) */
-        .list-card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .card-info h3 { font-size: 1.1rem; margin-bottom: 5px; }
-        .card-info p { font-size: 0.8rem; color: var(--text-muted); }
-        .btn-small { background: #333; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; transition: 0.2s; }
-        .btn-small:active { background: #555; transform: scale(0.95); }
-        .btn-small:disabled { opacity: 0.5; background: #222; }
-
-        /* 底部导航栏 */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            height: calc(var(--nav-height) + env(safe-area-inset-bottom));
-            background: var(--surface);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-around;
-            padding-bottom: env(safe-area-inset-bottom);
-            z-index: 100;
-        }
-        .nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            transition: color 0.2s;
-        }
-        .nav-icon { font-size: 1.5rem; margin-bottom: 2px; transition: transform 0.2s; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item.active .nav-icon { transform: translateY(-3px) scale(1.1); }
-
-        /* 屏幕飘字特效 */
-        .floating-text {
-            position: fixed;
+        /* CRT 扫描线与屏幕曲率特效 */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
             pointer-events: none;
-            font-weight: bold;
-            font-size: 1.5rem;
-            z-index: 9999;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
-            animation: floatUp 1s ease-out forwards;
         }
-        @keyframes floatUp {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            50% { transform: translateY(-40px) scale(1.2); opacity: 1; }
-            100% { transform: translateY(-80px) scale(0.8); opacity: 0; }
+        
+        /* 屏幕边缘暗角 */
+        .vignette {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: 0 0 150px rgba(0,0,0,0.9) inset; pointer-events: none; z-index: 1000;
         }
 
-        /* 盲盒掉落特效界面 */
-        #loot-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 1000;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-            animation: fadeIn 0.2s;
+        /* ================= 桌面与图标 ================= */
+        #desktop { flex: 1; position: relative; padding: 20px; display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+        
+        .icon {
+            width: 80px; text-align: center; cursor: pointer; transition: 0.2s; padding: 10px; border: 1px solid transparent;
         }
-        .loot-box { background: var(--surface); padding: 30px; border-radius: 16px; text-align: center; border: 2px solid var(--rare); box-shadow: 0 0 30px rgba(171, 71, 188, 0.4); }
+        .icon:hover { background: rgba(0, 255, 0, 0.1); border: 1px dashed var(--glow); }
+        .icon-img { font-size: 2.5rem; margin-bottom: 5px; text-shadow: 0 0 10px var(--glow); }
+        .icon-text { font-size: 0.85rem; background: #000; padding: 2px; }
+
+        /* ================= 视窗管理器 (Window System) ================= */
+        .window {
+            position: absolute;
+            background: var(--window-bg);
+            border: var(--border);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1), inset 0 0 10px rgba(0,255,0,0.05);
+            display: flex;
+            flex-direction: column;
+            min-width: 400px;
+            min-height: 300px;
+            visibility: hidden; /* 默认隐藏 */
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .window.active { visibility: visible; opacity: 1; transform: scale(1); }
+
+        .title-bar {
+            background: var(--glow); color: #000; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: grab; text-shadow: none;
+        }
+        .title-bar:active { cursor: grabbing; }
+        .win-controls span { cursor: pointer; padding: 0 8px; transition: 0.2s; font-weight: bold; }
+        .win-controls span:hover { color: #fff; background: #000; }
+
+        .win-content { flex: 1; padding: 15px; overflow-y: auto; overflow-x: hidden; position: relative; }
+        
+        /* 滚动条定制 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #002200; border-left: 1px solid var(--glow); }
+        ::-webkit-scrollbar-thumb { background: var(--glow); }
+
+        /* ================= 应用程序内部 UI ================= */
+        /* 邮件客户端 */
+        .mail-list { border: 1px solid var(--glow); height: 120px; overflow-y: auto; margin-bottom: 10px; }
+        .mail-item { padding: 5px 10px; border-bottom: 1px dashed var(--glow-dark); cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; }
+        .mail-item:hover, .mail-item.selected { background: var(--glow); color: #000; text-shadow: none; }
+        .mail-item.unread::before { content: "► "; animation: blink 1s infinite; }
+        .mail-body { border: 1px solid var(--glow); height: 200px; padding: 10px; white-space: pre-wrap; overflow-y: auto; background: rgba(0,0,0,0.5); line-height: 1.5; user-select: text;}
+
+        /* 终端 (Terminal) */
+        #term-output { height: calc(100% - 30px); overflow-y: auto; line-height: 1.4; user-select: text; margin-bottom: 10px; padding-right: 5px;}
+        .term-input-line { display: flex; align-items: center; }
+        .prompt { margin-right: 10px; }
+        #term-input { background: transparent; border: none; color: var(--glow); font-family: var(--font); font-size: 1rem; flex: 1; outline: none; text-shadow: inherit; text-transform: lowercase;}
+        .term-log { margin-bottom: 4px; }
+        .term-err { color: var(--glow-alert); text-shadow: 0 0 5px red; }
+        .term-succ { color: #fff; text-shadow: 0 0 8px #fff; }
+
+        /* 数据库检索 (Database) */
+        .db-search { display: flex; gap: 10px; margin-bottom: 15px; }
+        .db-search input { flex: 1; background: #000; border: 1px solid var(--glow); color: var(--glow); padding: 8px; font-family: var(--font); outline: none; }
+        .db-search button { background: var(--glow); color: #000; border: none; padding: 0 15px; cursor: pointer; font-family: var(--font); font-weight: bold; transition: 0.2s;}
+        .db-search button:hover { background: #fff; }
+        .db-result { border: 1px dashed var(--glow); padding: 15px; min-height: 200px; background: rgba(0,255,0,0.05); user-select: text;}
+        .db-field { display: flex; margin-bottom: 5px; }
+        .db-field-name { width: 100px; opacity: 0.7; }
+
+        /* ================= 底部任务栏 ================= */
+        #taskbar {
+            height: 40px; border-top: var(--border); background: #001100; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; z-index: 100;
+        }
+        .task-apps { display: flex; gap: 10px; }
+        .task-item { padding: 5px 15px; border: 1px solid var(--glow-dark); cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .task-item:hover, .task-item.active { background: var(--glow); color: #000; border-color: var(--glow); text-shadow: none; }
+        .sys-info { display: flex; gap: 20px; font-size: 0.9rem; }
+
+        /* 动画与特效 */
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .typing { overflow: hidden; white-space: nowrap; animation: typing 1s steps(40, end); }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
     </style>
 </head>
 <body>
+    <div class="vignette"></div>
 
-    <div class="header-dashboard">
-        <div style="font-weight: bold; font-size: 1.1rem; color: var(--primary);">末日生存 D-<span id="ui-day">1</span></div>
-        <div class="res-grid">
-            <div class="res-item"><div class="res-value" id="res-wood">0</div><div class="res-label">🪵 废木材</div></div>
-            <div class="res-item"><div class="res-value" id="res-food">0</div><div class="res-label">🥫 罐头</div></div>
-            <div class="res-item"><div class="res-value" id="res-gear">0</div><div class="res-label">⚙️ 零件</div></div>
+    <div id="desktop">
+        <div class="icon" onclick="OS.openApp('mail')">
+            <div class="icon-img">✉️</div>
+            <div class="icon-text">EnigmaMail</div>
+        </div>
+        <div class="icon" onclick="OS.openApp('db')">
+            <div class="icon-img">👁️</div>
+            <div class="icon-text">Odin_DB</div>
+        </div>
+        <div class="icon" onclick="OS.openApp('term')">
+            <div class="icon-img">⌨️</div>
+            <div class="icon-text">RootTerm</div>
         </div>
     </div>
 
-    <div class="content-area">
-        
-        <div id="tab-scavenge" class="tab-view active">
-            <h2 style="font-size: 1.2rem; margin-bottom: 10px;">废墟边缘</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">在这片区域搜寻一切有用的物资。小心变异生物。</p>
-            
-            <button class="btn-huge" id="btn-scavenge">
-                深入搜寻
-                <div class="btn-huge-sub">消耗精力，获取物资</div>
-            </button>
-
-            <div style="margin-top: 30px; text-align: center; font-size: 0.85rem; color: #666;">
-                * 每次搜寻有 5% 概率发现【战前补给箱】
+    <div class="window" id="win-mail" style="top: 50px; left: 100px; width: 500px;">
+        <div class="title-bar">
+            <span>EnigmaMail v2.1 // Inbox</span>
+            <div class="win-controls">
+                <span onclick="OS.closeApp('mail')">X</span>
             </div>
         </div>
-
-        <div id="tab-camp" class="tab-view">
-            <h2 style="font-size: 1.2rem; margin-bottom: 15px;">避难所建设</h2>
-            
-            <div class="list-card">
-                <div class="card-info">
-                    <h3>雨水收集器 <span id="lvl-water" style="font-size: 0.8rem; color: var(--primary);">Lv.0</span></h3>
-                    <p>自动生产罐头 (+1/秒)</p>
-                    <p style="margin-top:5px; color:#ff9800;">需 20 木材, 5 零件</p>
-                </div>
-                <button class="btn-small" onclick="Game.upgrade('water')" id="btn-upg-water">升级</button>
-            </div>
-
-            <div class="list-card">
-                <div class="card-info">
-                    <h3>拾荒机器人 <span id="lvl-bot" style="font-size: 0.8rem; color: var(--primary);">Lv.0</span></h3>
-                    <p>自动收集废木材 (+2/秒)</p>
-                    <p style="margin-top:5px; color:#ff9800;">需 50 木材, 15 零件</p>
-                </div>
-                <button class="btn-small" onclick="Game.upgrade('bot')" id="btn-upg-bot">组装</button>
-            </div>
-        </div>
-
-        <div id="tab-log" class="tab-view">
-            <h2 style="font-size: 1.2rem; margin-bottom: 15px;">个人终端日志</h2>
-            <div id="log-container" style="font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #ddd;">
-                </div>
-        </div>
-
-    </div>
-
-    <div id="loot-overlay" onclick="this.style.display='none'">
-        <div class="loot-box">
-            <div style="font-size: 3rem; margin-bottom: 10px;">🎁</div>
-            <h2 style="color: var(--rare); margin-bottom: 10px;">发现战前补给箱！</h2>
-            <p style="font-size: 1.1rem; margin-bottom: 20px;">获得了大量稀有物资！</p>
-            <div style="font-family: monospace; font-size: 1.2rem; color: #fff;">
-                +50 木材<br>+20 罐头<br>+5 零件
-            </div>
-            <p style="margin-top: 20px; font-size: 0.8rem; color: gray;">点击任意处继续</p>
+        <div class="win-content">
+            <div class="mail-list" id="ui-mail-list"></div>
+            <div class="mail-body" id="ui-mail-body">NEXUS MAIL CLIENT INITIALIZED.<br>WAITING FOR SECURE CONNECTIONS...</div>
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="UI.switchTab('tab-scavenge', this)">
-            <div class="nav-icon">✋</div>
-            <span>拾荒</span>
+    <div class="window" id="win-db" style="top: 80px; left: 150px; width: 450px;">
+        <div class="title-bar">
+            <span>Odin Global Database</span>
+            <div class="win-controls">
+                <span onclick="OS.closeApp('db')">X</span>
+            </div>
         </div>
-        <div class="nav-item" onclick="UI.switchTab('tab-camp', this)">
-            <div class="nav-icon">⛺</div>
-            <span>营地</span>
+        <div class="win-content">
+            <div class="db-search">
+                <input type="text" id="db-input" placeholder="Enter target Full Name..." onkeydown="if(event.key==='Enter') Apps.DB.search()">
+                <button onclick="Apps.DB.search()">QUERY</button>
+            </div>
+            <div class="db-result" id="ui-db-result">
+                CONNECTION ESTABLISHED.<br>AWAITING QUERY INPUT.
+            </div>
         </div>
-        <div class="nav-item" onclick="UI.switchTab('tab-log', this)">
-            <div class="nav-icon">📟</div>
-            <span>终端</span>
+    </div>
+
+    <div class="window" id="win-term" style="top: 150px; left: 400px; width: 550px; height: 400px;">
+        <div class="title-bar">
+            <span>Root Terminal // Crack Engine</span>
+            <div class="win-controls">
+                <span onclick="OS.closeApp('term')">X</span>
+            </div>
+        </div>
+        <div class="win-content" style="background:#000; padding:10px; display:flex; flex-direction:column;" onclick="document.getElementById('term-input').focus()">
+            <div id="term-output">
+                <div>NEXUS OS TERMINAL [Version 1.0.4]</div>
+                <div>Type 'help' for available commands.</div>
+                <div>-----------------------------------</div>
+            </div>
+            <div class="term-input-line">
+                <span class="prompt">root@nexus:~#</span>
+                <input type="text" id="term-input" autocomplete="off" spellcheck="false" onkeydown="Apps.Terminal.handleInput(event)">
+            </div>
+        </div>
+    </div>
+
+    <div id="taskbar">
+        <div class="task-apps" id="ui-taskbar"></div>
+        <div class="sys-info">
+            <div style="color:#0f0;">Balance: <span id="ui-crypto">0.00</span> NEX</div>
+            <div id="ui-clock">00:00:00</div>
         </div>
     </div>
 
 <script>
-    // 手机震动反馈包装函数
-    function vibrate(pattern) {
-        if ("vibrate" in navigator) {
-            navigator.vibrate(pattern);
+/**
+ * NEXUS-OS 核心引擎
+ * 包含了程序化生成系统 (PG)、视窗管理器 (WM) 和三大核心 App 逻辑。
+ */
+
+// ================= 1. 程序化数据引擎 (Data Generation) =================
+const DataGen = {
+    firstNames: ["John", "Alice", "Robert", "Emma", "David", "Sarah", "Michael", "Elena", "James", "Sophia", "Wei", "Akira", "Hans"],
+    lastNames: ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Chen", "Tanaka", "Muller"],
+    pets: ["Fluffy", "Rex", "Bella", "Max", "Luna", "Charlie", "Lucy", "Cooper", "Oreo", "Tiger"],
+    hobbies: ["Photography", "Gaming", "Fishing", "Cycling", "Astrology", "Cooking", "Baking"],
+    cities: ["Neo-Tokyo", "New York", "London", "Berlin", "Shanghai", "Night City", "Los Angeles"],
+    
+    // 全球社工库（存储所有生成的 NPC 数据）
+    Database: [],
+
+    init() {
+        // 生成 100 个无辜的 NPC 填入数据库
+        for(let i=0; i<100; i++) {
+            this.Database.push(this.createPerson());
+        }
+    },
+
+    createPerson() {
+        let fn = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
+        let ln = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
+        return {
+            id: 'UID-' + Math.floor(100000 + Math.random() * 900000),
+            name: `${fn} ${ln}`.toLowerCase(),
+            displayName: `${fn} ${ln}`,
+            dob: Math.floor(1970 + Math.random() * 35), // 1970 - 2005
+            city: this.cities[Math.floor(Math.random() * this.cities.length)],
+            pet: this.pets[Math.floor(Math.random() * this.pets.length)],
+            hobby: this.hobbies[Math.floor(Math.random() * this.hobbies.length)],
+            ip: `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
+        };
+    },
+
+    getRandomTarget() {
+        return this.Database[Math.floor(Math.random() * this.Database.length)];
+    }
+};
+
+// ================= 2. 任务引擎 (Mission Controller) =================
+const MissionCtrl = {
+    currentMission: null,
+    cryptoBalance: 0,
+    missionCount: 0,
+
+    generateMission() {
+        this.missionCount++;
+        // 从数据库挑一个幸运儿作为黑客目标
+        let target = DataGen.getRandomTarget();
+        
+        // 密码逻辑生成器 (例如：宠物名+出生年份)
+        let logicType = Math.floor(Math.random() * 3);
+        let password = "";
+        let clue = "";
+        
+        if (logicType === 0) {
+            password = target.pet.toLowerCase() + target.dob;
+            clue = "We know they use a combination of their pet's name and birth year. Lowercase.";
+        } else if (logicType === 1) {
+            password = target.dob + target.hobby.toLowerCase();
+            clue = "Intel suggests the password is their birth year followed by their favorite hobby. Lowercase.";
+        } else {
+            password = target.city.split(' ')[0].toLowerCase() + target.pet.toLowerCase();
+            clue = "The password combines their city of residence (first word) and pet's name. All lowercase.";
+        }
+
+        this.currentMission = {
+            id: 'M-' + this.missionCount,
+            target: target,
+            password: password,
+            reward: (Math.random() * 2 + 1).toFixed(2) // 1.00 - 3.00 NEX
+        };
+
+        // 发送带悬念的委托邮件
+        let senders = ["Anonymous", "ShadowBroker", "The_Oracle", "Client_X"];
+        let sender = senders[Math.floor(Math.random() * senders.length)];
+        
+        Apps.Mail.receiveEmail(
+            `Contract Available: Target ${target.ip}`,
+            sender,
+            `Agent,\n\nWe need you to breach a secure terminal.\n\nTarget Name: ${target.displayName}\nTarget IP: ${target.ip}\n\n${clue}\n\nUse the Odin Database to find their personal details. Once you figure out the password, use your Terminal to execute the crack.\n\nReward: ${this.currentMission.reward} NEX\n\nDo not fail us.`
+        );
+
+        Apps.Terminal.log(`[SYS] Incoming encrypted transmission intercepted... Check Mail.`, 'c-succ');
+    },
+
+    checkPassword(ip, pwd) {
+        if (!this.currentMission) return "No active contract.";
+        if (ip !== this.currentMission.target.ip) return "Error: Target IP not found or does not match active contract.";
+        
+        if (pwd === this.currentMission.password) {
+            this.cryptoBalance += parseFloat(this.currentMission.reward);
+            document.getElementById('ui-crypto').innerText = this.cryptoBalance.toFixed(2);
+            let rewardMsg = `Access Granted. Payload deployed. ${this.currentMission.reward} NEX transferred to your wallet.`;
+            this.currentMission = null; // 结案
+            
+            // 15秒后派发新任务
+            setTimeout(() => this.generateMission(), 15000);
+            return rewardMsg;
+        } else {
+            return "Access Denied. Incorrect password.";
         }
     }
+};
 
-    // 状态管理
-    const State = {
-        res: { wood: 0, food: 0, gear: 0 },
-        bld: { water: 0, bot: 0 },
-        ticks: 0
-    };
+// ================= 3. 操作系统底层 (OS Core) =================
+const OS = {
+    zIndexCounter: 100,
+    apps: {
+        'mail': { name: 'EnigmaMail', open: false },
+        'db': { name: 'Odin_DB', open: false },
+        'term': { name: 'RootTerm', open: false }
+    },
 
-    // 核心玩法逻辑
-    const Game = {
-        init() {
-            // 绑定大按钮的触摸/点击事件，提供极佳反馈
-            const btn = document.getElementById('btn-scavenge');
-            
-            // 适配移动端 touchstart 减少 300ms 延迟
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // 防止默认滚动
-                this.scavenge(e.touches[0].clientX, e.touches[0].clientY);
-                btn.style.transform = 'translateY(8px)';
-                btn.style.boxShadow = '0 0 0 var(--primary-dark), 0 5px 10px rgba(0,0,0,0.4)';
-            }, {passive: false});
+    init() {
+        this.updateClock();
+        setInterval(() => this.updateClock(), 1000);
+        this.setupDraggable();
+        
+        // 初始派发第一个案件
+        setTimeout(() => MissionCtrl.generateMission(), 2000);
+    },
 
-            btn.addEventListener('touchend', (e) => {
-                btn.style.transform = '';
-                btn.style.boxShadow = '';
-            });
+    updateClock() {
+        let d = new Date();
+        document.getElementById('ui-clock').innerText = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+    },
 
-            // 兼容PC点击测试
-            btn.addEventListener('mousedown', (e) => {
-                this.scavenge(e.clientX, e.clientY);
-            });
+    openApp(appId) {
+        let win = document.getElementById(`win-${appId}`);
+        this.apps[appId].open = true;
+        win.classList.add('active');
+        this.focusWindow(win);
+        this.renderTaskbar();
+        
+        if(appId === 'term') document.getElementById('term-input').focus();
+        if(appId === 'db') document.getElementById('db-input').focus();
+    },
 
-            this.log("系统启动... 环境辐射值正常。");
-            setInterval(() => this.loop(), 1000);
-        },
+    closeApp(appId) {
+        let win = document.getElementById(`win-${appId}`);
+        this.apps[appId].open = false;
+        win.classList.remove('active');
+        this.renderTaskbar();
+    },
 
-        scavenge(x, y) {
-            // 1. 基础震动反馈 (短促有力)
-            vibrate(30);
+    focusWindow(win) {
+        this.zIndexCounter++;
+        win.style.zIndex = this.zIndexCounter;
+    },
 
-            // 2. 随机收益计算
-            let woodGain = Math.floor(Math.random() * 3) + 1; // 1-3
-            let foodGain = Math.random() < 0.3 ? 1 : 0; // 30%得食物
-            let gearGain = Math.random() < 0.1 ? 1 : 0; // 10%得零件
-
-            // 3. 盲盒爆率 (5% 触发极品)
-            if (Math.random() < 0.05) {
-                vibrate([100, 50, 100, 50, 300]); // 特殊长震动
-                State.res.wood += 50; State.res.food += 20; State.res.gear += 5;
-                document.getElementById('loot-overlay').style.display = 'flex';
-                this.log(`<span style="color:var(--rare)">惊人发现！你挖出了一个战前补给箱！</span>`);
-                UI.update();
-                return;
+    renderTaskbar() {
+        let tb = document.getElementById('ui-taskbar');
+        tb.innerHTML = '';
+        for (let id in this.apps) {
+            if (this.apps[id].open) {
+                let el = document.createElement('div');
+                el.className = 'task-item active';
+                el.innerText = this.apps[id].name;
+                el.onclick = () => this.focusWindow(document.getElementById(`win-${id}`));
+                tb.appendChild(el);
             }
+        }
+    },
 
-            // 普通收益应用
-            State.res.wood += woodGain;
-            State.res.food += foodGain;
-            State.res.gear += gearGain;
+    // 窗口拖拽系统
+    setupDraggable() {
+        let isDragging = false;
+        let currentWindow = null;
+        let offsetX = 0, offsetY = 0;
 
-            // 4. 视觉果汁感：屏幕飘字
-            let floatText = `+${woodGain} 木`;
-            if (foodGain) floatText += ` +${foodGain} 罐`;
-            if (gearGain) floatText += ` <span style="color:#2196F3">+${gearGain} 零件</span>`;
-            UI.spawnFloatingText(x, y, floatText);
+        document.querySelectorAll('.title-bar').forEach(bar => {
+            bar.addEventListener('mousedown', (e) => {
+                // 点击关闭按钮时不触发拖拽
+                if(e.target.tagName.toLowerCase() === 'span') return;
+                
+                isDragging = true;
+                currentWindow = bar.parentElement;
+                OS.focusWindow(currentWindow);
+                
+                let rect = currentWindow.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            });
+        });
 
-            UI.update();
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !currentWindow) return;
+            // 确保窗口不会被拖出屏幕外太多
+            let x = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - 100));
+            let y = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - 50));
+            
+            currentWindow.style.left = x + 'px';
+            currentWindow.style.top = y + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            currentWindow = null;
+        });
+
+        // 点击窗口内容区也能置顶
+        document.querySelectorAll('.window').forEach(win => {
+            win.addEventListener('mousedown', () => OS.focusWindow(win));
+        });
+    }
+};
+
+// ================= 4. 应用程序逻辑 (Apps) =================
+const Apps = {
+    // 邮件客户端
+    Mail: {
+        inbox: [],
+        receiveEmail(subject, sender, body) {
+            this.inbox.unshift({ id: Date.now(), subject, sender, body, read: false });
+            this.renderList();
+            // 如果没开着，给点提示可以做闪烁，这里简化
         },
+        renderList() {
+            let html = '';
+            this.inbox.forEach((mail, index) => {
+                html += `<div class="mail-item ${mail.read ? '' : 'unread'}" onclick="Apps.Mail.readEmail(${index}, this)">
+                            <span>${mail.sender}</span>
+                            <span style="opacity:0.7; font-size:0.8em">${mail.subject}</span>
+                         </div>`;
+            });
+            document.getElementById('ui-mail-list').innerHTML = html;
+        },
+        readEmail(index, el) {
+            let mail = this.inbox[index];
+            mail.read = true;
+            this.renderList(); // 去掉未读标记
+            
+            // 简单打字机效果显示邮件正文
+            let bodyEl = document.getElementById('ui-mail-body');
+            bodyEl.innerHTML = `FROM: ${mail.sender}<br>SUBJ: ${mail.subject}<br>--------------------------<br><br>${mail.body}`;
+        }
+    },
 
-        upgrade(type) {
-            vibrate(50);
-            if (type === 'water' && State.res.wood >= 20 && State.res.gear >= 5) {
-                State.res.wood -= 20; State.res.gear -= 5;
-                State.bld.water++;
-                this.log("雨水收集器已升级。饮用水保障增强。");
-            } else if (type === 'bot' && State.res.wood >= 50 && State.res.gear >= 15) {
-                State.res.wood -= 50; State.res.gear -= 15;
-                State.bld.bot++;
-                this.log("一台破旧的机器人被激活，它开始自动拾取木材。");
+    // 数据库
+    DB: {
+        search() {
+            let input = document.getElementById('db-input').value.trim().toLowerCase();
+            let resultEl = document.getElementById('ui-db-result');
+            
+            if (!input) return;
+            
+            resultEl.innerHTML = "SEARCHING...";
+            
+            // 模拟网络延迟
+            setTimeout(() => {
+                let found = DataGen.Database.filter(p => p.name.includes(input));
+                
+                if (found.length === 0) {
+                    resultEl.innerHTML = `<span style="color:var(--glow-alert)">ERROR: No records found for '${input}'.</span>`;
+                    return;
+                }
+
+                let html = `MATCH FOUND: ${found.length} record(s).<br><br>`;
+                found.forEach(p => {
+                    html += `
+                        <div style="border: 1px solid var(--glow-dark); padding: 10px; margin-bottom: 10px;">
+                            <div class="db-field"><div class="db-field-name">UID:</div><div>${p.id}</div></div>
+                            <div class="db-field"><div class="db-field-name">NAME:</div><div>${p.displayName}</div></div>
+                            <div class="db-field"><div class="db-field-name">DOB:</div><div>${p.dob}</div></div>
+                            <div class="db-field"><div class="db-field-name">LOC:</div><div>${p.city}</div></div>
+                            <div class="db-field"><div class="db-field-name">PET:</div><div>${p.pet}</div></div>
+                            <div class="db-field"><div class="db-field-name">HOBBY:</div><div>${p.hobby}</div></div>
+                        </div>`;
+                });
+                resultEl.innerHTML = html;
+            }, 600);
+        }
+    },
+
+    // 终端
+    Terminal: {
+        log(msg, className = '') {
+            let out = document.getElementById('term-output');
+            let div = document.createElement('div');
+            div.className = `term-log ${className}`;
+            div.innerText = msg;
+            out.appendChild(div);
+            out.scrollTop = out.scrollHeight; // 自动滚动到底部
+        },
+        handleInput(e) {
+            if (e.key === 'Enter') {
+                let inputEl = document.getElementById('term-input');
+                let cmd = inputEl.value.trim();
+                inputEl.value = '';
+                
+                if(!cmd) return;
+                this.log(`root@nexus:~# ${cmd}`);
+                this.execute(cmd);
             }
-            UI.update();
         },
+        execute(cmdStr) {
+            let args = cmdStr.split(' ');
+            let command = args[0].toLowerCase();
 
-        loop() {
-            State.ticks++;
-            if (State.ticks % 10 === 0) document.getElementById('ui-day').innerText = Math.floor(State.ticks/10) + 1;
-
-            // 自动化收益
-            let woodNet = State.bld.bot * 2;
-            let foodNet = State.bld.water * 1;
-            
-            State.res.wood += woodNet;
-            State.res.food += foodNet;
-            
-            UI.update();
-        },
-
-        log(msg) {
-            const container = document.getElementById('log-container');
-            const d = new Date();
-            const time = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-            const html = `<div style="margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:8px;">
-                <span style="color:var(--text-muted)">[${time}]</span> ${msg}
-            </div>`;
-            container.insertAdjacentHTML('afterbegin', html);
+            switch(command) {
+                case 'help':
+                    this.log("Available commands:");
+                    this.log("  clear   - Clear terminal output");
+                    this.log("  ifconfig- Display network info");
+                    this.log("  crack   - Syntax: crack [IP_ADDRESS] [PASSWORD]");
+                    break;
+                case 'clear':
+                    document.getElementById('term-output').innerHTML = '';
+                    break;
+                case 'ifconfig':
+                    this.log("eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500");
+                    this.log("        inet 192.168.1.104  netmask 255.255.255.0  broadcast 192.168.1.255");
+                    break;
+                case 'crack':
+                    if (args.length < 3) {
+                        this.log("Usage: crack [IP_ADDRESS] [PASSWORD]", "term-err");
+                    } else {
+                        let ip = args[1];
+                        let pwd = args.slice(2).join(' '); // 密码可能含空格
+                        this.log(`Initiating brute force protocol against ${ip}...`);
+                        
+                        // 模拟破解延迟
+                        setTimeout(() => {
+                            let result = MissionCtrl.checkPassword(ip, pwd);
+                            if (result.includes("Denied") || result.includes("Error")) {
+                                this.log(result, "term-err");
+                            } else {
+                                this.log(result, "term-succ");
+                            }
+                        }, 1000);
+                    }
+                    break;
+                default:
+                    this.log(`Command not found: ${command}`, "term-err");
+            }
         }
-    };
+    }
+};
 
-    // 视图更新控制
-    const UI = {
-        switchTab(tabId, navElement) {
-            vibrate(15); // 切换轻震动
-            document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
-            document.getElementById(tabId).classList.add('active');
-            navElement.classList.add('active');
-        },
+// ================= 系统启动 =================
+window.onload = () => {
+    DataGen.init();
+    OS.init();
+};
 
-        update() {
-            document.getElementById('res-wood').innerText = State.res.wood;
-            document.getElementById('res-food').innerText = State.res.food;
-            document.getElementById('res-gear').innerText = State.res.gear;
-
-            document.getElementById('lvl-water').innerText = `Lv.${State.bld.water}`;
-            document.getElementById('lvl-bot').innerText = `Lv.${State.bld.bot}`;
-
-            // 按钮置灰逻辑
-            document.getElementById('btn-upg-water').disabled = (State.res.wood < 20 || State.res.gear < 5);
-            document.getElementById('btn-upg-bot').disabled = (State.res.wood < 50 || State.res.gear < 15);
-        },
-
-        spawnFloatingText(x, y, htmlContent) {
-            const el = document.createElement('div');
-            el.className = 'floating-text';
-            el.innerHTML = htmlContent;
-            
-            // 随机偏移，避免重叠
-            const offsetX = (Math.random() - 0.5) * 40;
-            el.style.left = (x - 20 + offsetX) + 'px';
-            el.style.top = (y - 30) + 'px';
-            
-            // 根据内容改变颜色
-            if (htmlContent.includes('零件')) el.style.color = '#64B5F6';
-            else el.style.color = '#81C784';
-
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 1000);
-        }
-    };
-
-    // 启动游戏
-    window.onload = () => {
-        Game.init();
-        UI.update();
-    };
 </script>
 </body>
 </html>
