@@ -1957,6 +1957,54 @@
         }
         container.innerHTML = html;
     };
+    // ========================================================================
+    // [经济系统重平衡补丁 (Economy Rebalance Patch)]
+    // 大幅降低升级的指数爆炸系数，并将 8888 兑换码奖励提升至一千万亿金币！
+    // ========================================================================
+
+    // 1. 动态覆盖底层数据字典中的升级消耗曲线
+    const rarityKeys = ['N', 'R', 'SR', 'SSR', 'SP'];
+    const newBases = [10, 50, 100, 300, 1000];       // 大幅降低基础花费
+    const newExps = [1.05, 1.06, 1.07, 1.08, 1.09];  // 极其平滑的指数曲线
+
+    rarityKeys.forEach((key, index) => {
+        if (GameApp.Data.Rarity[key]) {
+            GameApp.Data.Rarity[key].upgradeCostBase = newBases[index];
+            GameApp.Data.Rarity[key].upgradeCostExp = newExps[index];
+        }
+    });
+
+    // 2. 重新覆盖兑换码逻辑，发放极度夸张的福利
+    GameApp.UI.openRedeemCode = function() {
+        let code = prompt("请输入神龛暗号 (兑换码)：\n(提示: 6699 或 8888)");
+        if (!code) return;
+
+        if (code === "6699") {
+            if (GameApp.State.Data.redeemedCodes["6699"]) {
+                GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+            } else {
+                GameApp.State.modifyResource('jade', 100000000);
+                GameApp.State.Data.redeemedCodes["6699"] = true;
+                GameApp.UI.toast("🎉 兑换成功！神明赐福：获得 100,000,000 勾玉！");
+            }
+        } else if (code === "8888") {
+            if (GameApp.State.Data.redeemedCodes["8888"]) {
+                GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+            } else {
+                // 赐予 1000 兆金币 (1,000,000,000,000,000)
+                GameApp.State.modifyResource('coins', 1000000000000000);
+                GameApp.State.Data.redeemedCodes["8888"] = true;
+                GameApp.UI.toast("🎉 兑换成功！财神附体：获得 1,000,000,000,000,000 金币！");
+            }
+        } else {
+            GameApp.UI.toast("暗号无效或已过期。", true);
+        }
+    };
+
+    // 3. 强制刷新UI以应用新价格
+    if (typeof GameApp.UI !== 'undefined' && document.getElementById('view-roster').classList.contains('active')) {
+        GameApp.UI.renderRoster();
+    }
 </script>
 </body>
 </html>
