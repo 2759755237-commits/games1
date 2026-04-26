@@ -1695,7 +1695,108 @@
         // 引擎，启动！
         GameApp.Engine.init();
     };
+// ========================================================================
+    // [紧急热修复补丁 (Hotfix Patch)]
+    // 修复因分段生成导致的 Data.Stages 与 Data.Stage 变量名不匹配问题
+    // ========================================================================
 
+    // 1. 修复：离线收益算法中的变量指向
+    GameApp.Storage.calculateOfflineProgress = function() {
+        let now = Date.now();
+        let lastTime = GameApp.State.Data.lastSaveTime;
+        let diffSeconds = Math.floor((now - lastTime) / 1000);
+        if (diffSeconds < 60) return;
+        
+        let maxSeconds = GameApp.Data.System.MAX_OFFLINE_HOURS * 3600;
+        if (diffSeconds > maxSeconds) diffSeconds = maxSeconds;
+
+        let teamDPS = GameApp.State.getTeamTotalDPS();
+        if (teamDPS <= 0) return;
+
+        let currentStage = GameApp.State.Data.Progression.currentStage;
+        let formula = GameApp.Data.Stages.Formula; // 修复为 Stages.Formula
+        
+        let bossHp = formula.baseHp * Math.pow(formula.hpMult, currentStage - 1);
+        if (currentStage % 10 === 0) bossHp *= formula.bossMultiplier;
+
+        let timePerKill = Math.ceil(bossHp / teamDPS);
+        if (timePerKill < 1) timePerKill = 1;
+        let kills = Math.floor(diffSeconds / timePerKill);
+        
+        if (kills > 0) {
+            let stageBaseCoin = formula.baseCoin + (formula.coinStep * currentStage);
+            if (currentStage % 10 === 0) stageBaseCoin *= formula.bossMultiplier;
+            
+            let earnedCoins = Math.floor(kills * stageBaseCoin);
+            GameApp.State.modifyResource('coins', earnedCoins);
+            GameApp.State.Data.Progression.totalKills += kills;
+            
+            let hours = (diffSeconds / 3600).toFixed(1);
+            setTimeout(() => {
+                if (typeof GameApp.UI !== 'undefined' && GameApp.UI.showOfflineReport) {
+                    GameApp.UI.showOfflineReport(hours, kills, earnedCoins);
+                }
+            }, 1000);
+        }
+    };
+
+    // 2. 修复：战斗状态机初始化
+    GameApp.Systems.Combat.initStage = function() {
+        let stage = GameApp.State.Data.Progression.currentStage;
+        let formula = GameApp.Data.Stages.Formula; // 修复为 Stages.Formula
+        
+        this.currentEnemyMaxHp = Math.floor(formula.baseHp * Math.pow(formula.hpMult, stage - 1));
+        if (stage % 10 === 0) this.currentEnemyMaxHp *= formula.bossMultiplier;
+        
+        this.currentEnemyHp = this.currentEnemyMaxHp;
+        this.isBossDead = false;
+
+        if (typeof GameApp.UI !== 'undefined') GameApp.UI.initCombatView();
+    };
+
+    // 3. 修复：怪物死亡结算
+    GameApp.Systems.Combat._handleEnemyDeath = function() {
+        this.isBossDead = true;
+        let stage = GameApp.State.Data.Progression.currentStage;
+        let formula = GameApp.Data.Stages.Formula; // 修复为 Stages.Formula
+
+        let coinDrop = Math.floor(formula.baseCoin + (formula.coinStep * stage));
+        if (stage % 10 === 0) coinDrop *= formula.bossMultiplier;
+
+        GameApp.State.modifyResource('coins', coinDrop);
+        GameApp.State.modifyResource('jade', formula.baseJade);
+        GameApp.State.Data.Progression.totalKills++;
+
+        GameApp.State.Data.Progression.currentStage++;
+        if (GameApp.State.Data.Progression.currentStage > GameApp.State.Data.Progression.highestStage) {
+            GameApp.State.Data.Progression.highestStage = GameApp.State.Data.Progression.currentStage;
+        }
+
+        setTimeout(() => { this.initStage(); }, 500);
+    };
+
+    // 4. 修复：UI 关卡视图渲染
+    GameApp.UI.initCombatView = function() {
+        const stage = GameApp.State.Data.Progression.currentStage;
+        const maxHp = GameApp.Systems.Combat.currentEnemyMaxHp;
+        
+        document.getElementById('ui-stage').innerText = stage;
+        document.getElementById('ui-boss-hp-max').innerText = GameApp.Utils.formatNumber(maxHp);
+        
+        const bossIconEl = document.getElementById('boss-entity');
+        if (stage % 10 === 0) {
+            const bossList = GameApp.Data.Stages.Bosses; // 修复为 Stages.Bosses
+            const bossType = bossList[(stage / 10) % bossList.length];
+            bossIconEl.innerHTML = `${bossType.icon}<div class="boss-hp-container"><div class="boss-hp-bar" id="ui-boss-hp-bar"></div><div class="boss-hp-text"><span id="ui-boss-hp-curr"></span> / <span id="ui-boss-hp-max">${GameApp.Utils.formatNumber(maxHp)}</span></div></div>`;
+            bossIconEl.style.fontSize = '7rem';
+            bossIconEl.style.filter = 'drop-shadow(0 0 20px #ef4444)';
+        } else {
+            bossIconEl.innerHTML = `👹<div class="boss-hp-container"><div class="boss-hp-bar" id="ui-boss-hp-bar"></div><div class="boss-hp-text"><span id="ui-boss-hp-curr"></span> / <span id="ui-boss-hp-max">${GameApp.Utils.formatNumber(maxHp)}</span></div></div>`;
+            bossIconEl.style.fontSize = '5rem';
+            bossIconEl.style.filter = 'none';
+        }
+        this.updateBossHpBar(maxHp, maxHp);
+    };
 </script>
 </body>
 </html>
