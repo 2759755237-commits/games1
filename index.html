@@ -2,562 +2,584 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS-OS [v1.0.4] - Secure Terminal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>嵌合体协议 - Chimera Protocol</title>
     <style>
-        /* ================= 赛博朋克 CRT 视觉系统 ================= */
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-
+        /* ================= 核心视觉系统 (赛博生物风) ================= */
         :root {
-            --bg: #050a08;
-            --glow: #0f0;
-            --glow-dark: #004400;
-            --glow-alert: #f00;
-            --window-bg: rgba(5, 15, 10, 0.9);
-            --border: 1px solid #0f0;
-            --font: 'Share Tech Mono', monospace;
+            --bg-dark: #0a0a0f; --bg-panel: #161620; --border: #2d2d44;
+            --text-main: #e2e8f0; --text-muted: #64748b;
+            --primary: #3b82f6; --primary-hover: #2563eb; --currency: #10b981;
+            /* 稀有度色彩引擎 */
+            --rarity-n: #94a3b8;   /* 灰 */
+            --rarity-r: #3b82f6;   /* 蓝 */
+            --rarity-sr: #a855f7;  /* 紫 */
+            --rarity-ssr: #eab308; /* 金 */
+            --rarity-ur: #ef4444;  /* 红 (终极融合) */
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-        body {
-            background-color: var(--bg);
-            color: var(--glow);
-            font-family: var(--font);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-        }
-
-        /* CRT 扫描线与屏幕曲率特效 */
-        body::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
+        /* 顶部资源条 */
+        .header { background: var(--bg-panel); border-bottom: 1px solid var(--border); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 10; }
+        .currency-box { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: bold; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .currency-icon { color: var(--currency); text-shadow: 0 0 10px var(--currency); }
         
-        /* 屏幕边缘暗角 */
-        .vignette {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            box-shadow: 0 0 150px rgba(0,0,0,0.9) inset; pointer-events: none; z-index: 1000;
-        }
+        /* 页面容器与动画 */
+        .view-container { flex: 1; position: relative; overflow: hidden; }
+        .view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 20px; overflow-y: auto; opacity: 0; pointer-events: none; transition: 0.3s ease; transform: scale(0.98); }
+        .view.active { opacity: 1; pointer-events: auto; transform: scale(1); }
 
-        /* ================= 桌面与图标 ================= */
-        #desktop { flex: 1; position: relative; padding: 20px; display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+        /* 抽卡区 (Gacha View) */
+        #view-gacha { display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1a1a2e 0%, var(--bg-dark) 100%); }
+        .banner-title { font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; text-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+        .pity-counter { color: var(--text-muted); margin-bottom: 40px; font-size: 0.9rem; }
+        .pity-counter span { color: var(--rarity-ssr); font-weight: bold; }
+        .gacha-actions { display: flex; gap: 20px; }
+        .btn-gacha { background: var(--bg-panel); color: white; border: 2px solid var(--primary); padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 12px; cursor: pointer; transition: 0.2s; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); position: relative; overflow: hidden; }
+        .btn-gacha::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: 0.5s; }
+        .btn-gacha:hover { background: var(--primary); transform: translateY(-3px); box-shadow: 0 5px 25px rgba(59, 130, 246, 0.5); }
+        .btn-gacha:hover::before { left: 100%; }
+        .btn-gacha:active { transform: translateY(1px); }
+
+        /* 抽卡结果动画弹窗 */
+        #gacha-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .result-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 800px; margin-top: 30px; }
+        .card-reveal { width: 120px; height: 160px; background: #222; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #444; opacity: 0; transform: translateY(50px) scale(0.8); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .card-reveal.show { opacity: 1; transform: translateY(0) scale(1); }
         
-        .icon {
-            width: 80px; text-align: center; cursor: pointer; transition: 0.2s; padding: 10px; border: 1px solid transparent;
-        }
-        .icon:hover { background: rgba(0, 255, 0, 0.1); border: 1px dashed var(--glow); }
-        .icon-img { font-size: 2.5rem; margin-bottom: 5px; text-shadow: 0 0 10px var(--glow); }
-        .icon-text { font-size: 0.85rem; background: #000; padding: 2px; }
-
-        /* ================= 视窗管理器 (Window System) ================= */
-        .window {
-            position: absolute;
-            background: var(--window-bg);
-            border: var(--border);
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1), inset 0 0 10px rgba(0,255,0,0.05);
-            display: flex;
-            flex-direction: column;
-            min-width: 400px;
-            min-height: 300px;
-            visibility: hidden; /* 默认隐藏 */
-            opacity: 0;
-            transform: scale(0.95);
-            transition: opacity 0.2s, transform 0.2s;
-        }
-        .window.active { visibility: visible; opacity: 1; transform: scale(1); }
-
-        .title-bar {
-            background: var(--glow); color: #000; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; cursor: grab; text-shadow: none;
-        }
-        .title-bar:active { cursor: grabbing; }
-        .win-controls span { cursor: pointer; padding: 0 8px; transition: 0.2s; font-weight: bold; }
-        .win-controls span:hover { color: #fff; background: #000; }
-
-        .win-content { flex: 1; padding: 15px; overflow-y: auto; overflow-x: hidden; position: relative; }
+        /* 稀有度特效 */
+        .rarity-N { border-color: var(--rarity-n); } .rarity-N::after { content:'N'; color: var(--rarity-n); }
+        .rarity-R { border-color: var(--rarity-r); box-shadow: 0 0 15px rgba(59,130,246,0.3); } .rarity-R::after { content:'R'; color: var(--rarity-r); text-shadow: 0 0 5px var(--rarity-r); }
+        .rarity-SR { border-color: var(--rarity-sr); box-shadow: 0 0 20px rgba(168,85,247,0.5); } .rarity-SR::after { content:'SR'; color: var(--rarity-sr); text-shadow: 0 0 8px var(--rarity-sr); }
+        .rarity-SSR { border-color: var(--rarity-ssr); box-shadow: 0 0 30px rgba(234,179,8,0.6); animation: float 2s infinite ease-in-out; } .rarity-SSR::after { content:'SSR'; color: var(--rarity-ssr); text-shadow: 0 0 10px var(--rarity-ssr); }
+        .rarity-UR { border-color: var(--rarity-ur); box-shadow: 0 0 40px rgba(239,68,68,0.8); animation: pulseRed 1.5s infinite; } .rarity-UR::after { content:'UR'; color: var(--rarity-ur); text-shadow: 0 0 15px var(--rarity-ur); }
         
-        /* 滚动条定制 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #002200; border-left: 1px solid var(--glow); }
-        ::-webkit-scrollbar-thumb { background: var(--glow); }
+        .card-reveal::after { position: absolute; top: 5px; left: 8px; font-weight: 900; font-size: 0.9rem; font-style: italic; }
+        .cr-icon { font-size: 3rem; margin-bottom: 10px; z-index: 2; }
+        .cr-name { font-weight: bold; font-size: 0.85rem; text-align: center; z-index: 2; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 4px;}
+        
+        /* 融合区 (Evolution View) */
+        .evo-container { display: flex; gap: 20px; height: 100%; }
+        .roster-panel { width: 350px; background: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .panel-title { padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold; color: var(--text-muted); letter-spacing: 1px; }
+        .roster-list { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; align-content: start; }
+        
+        /* 兵营小头像 */
+        .unit-thumb { aspect-ratio: 1; border-radius: 8px; background: #222; border: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; position: relative; transition: 0.2s; }
+        .unit-thumb:hover { transform: scale(1.05); }
+        .unit-thumb.selected { border-color: white; box-shadow: 0 0 0 2px white; transform: scale(1.1); z-index: 5; }
+        .unit-lvl { position: absolute; bottom: 2px; right: 4px; font-size: 0.7rem; font-weight: bold; background: rgba(0,0,0,0.8); padding: 0 3px; border-radius: 3px; }
 
-        /* ================= 应用程序内部 UI ================= */
-        /* 邮件客户端 */
-        .mail-list { border: 1px solid var(--glow); height: 120px; overflow-y: auto; margin-bottom: 10px; }
-        .mail-item { padding: 5px 10px; border-bottom: 1px dashed var(--glow-dark); cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; }
-        .mail-item:hover, .mail-item.selected { background: var(--glow); color: #000; text-shadow: none; }
-        .mail-item.unread::before { content: "► "; animation: blink 1s infinite; }
-        .mail-body { border: 1px solid var(--glow); height: 200px; padding: 10px; white-space: pre-wrap; overflow-y: auto; background: rgba(0,0,0,0.5); line-height: 1.5; user-select: text;}
+        .fusion-panel { flex: 1; background: var(--bg-panel); border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+        .fusion-slots { display: flex; align-items: center; gap: 30px; margin-bottom: 40px; }
+        .slot { width: 120px; height: 120px; border: 2px dashed var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 3rem; background: rgba(0,0,0,0.3); transition: 0.3s; }
+        .slot.filled { border-style: solid; }
+        .plus-sign { font-size: 2rem; color: var(--text-muted); font-weight: bold; }
+        
+        .btn-fuse { background: var(--rarity-sr); color: white; border: none; padding: 15px 50px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; transition: 0.3s; box-shadow: 0 5px 20px rgba(168,85,247,0.4); }
+        .btn-fuse:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 8px 30px rgba(168,85,247,0.6); }
+        .btn-fuse:disabled { background: #333; box-shadow: none; cursor: not-allowed; opacity: 0.5; }
 
-        /* 终端 (Terminal) */
-        #term-output { height: calc(100% - 30px); overflow-y: auto; line-height: 1.4; user-select: text; margin-bottom: 10px; padding-right: 5px;}
-        .term-input-line { display: flex; align-items: center; }
-        .prompt { margin-right: 10px; }
-        #term-input { background: transparent; border: none; color: var(--glow); font-family: var(--font); font-size: 1rem; flex: 1; outline: none; text-shadow: inherit; text-transform: lowercase;}
-        .term-log { margin-bottom: 4px; }
-        .term-err { color: var(--glow-alert); text-shadow: 0 0 5px red; }
-        .term-succ { color: #fff; text-shadow: 0 0 8px #fff; }
+        /* 战斗推图区 (Combat View) */
+        .combat-stage { display: flex; flex-direction: column; height: 100%; gap: 15px; }
+        .stage-info { text-align: center; font-size: 1.5rem; font-weight: bold; color: var(--currency); }
+        .arena { flex: 1; background: url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h40v40H0V0zm20 20h20v20H20V20zM0 20h20v20H0V20z" fill="%231a1a2e" fill-opacity="0.4" fill-rule="evenodd"/></svg>'); border-radius: 12px; border: 1px solid var(--border); position: relative; overflow: hidden; display: flex; justify-content: space-between; padding: 20px; }
+        .team-box { width: 45%; border-radius: 8px; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+        .dmg-text { position: absolute; font-weight: bold; color: #ef4444; font-size: 1.2rem; text-shadow: 0 0 5px #000; animation: floatUpAndFade 0.8s forwards; pointer-events: none; }
+        .dps-meter { background: var(--bg-panel); padding: 15px; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: space-between; font-family: monospace; font-size: 1.1rem; }
 
-        /* 数据库检索 (Database) */
-        .db-search { display: flex; gap: 10px; margin-bottom: 15px; }
-        .db-search input { flex: 1; background: #000; border: 1px solid var(--glow); color: var(--glow); padding: 8px; font-family: var(--font); outline: none; }
-        .db-search button { background: var(--glow); color: #000; border: none; padding: 0 15px; cursor: pointer; font-family: var(--font); font-weight: bold; transition: 0.2s;}
-        .db-search button:hover { background: #fff; }
-        .db-result { border: 1px dashed var(--glow); padding: 15px; min-height: 200px; background: rgba(0,255,0,0.05); user-select: text;}
-        .db-field { display: flex; margin-bottom: 5px; }
-        .db-field-name { width: 100px; opacity: 0.7; }
+        /* 底部导航栏 */
+        .nav-bar { display: flex; background: var(--bg-panel); border-top: 1px solid var(--border); z-index: 10; }
+        .nav-item { flex: 1; padding: 15px; text-align: center; color: var(--text-muted); font-weight: bold; cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent; }
+        .nav-item:hover { color: var(--text-main); background: rgba(255,255,255,0.02); }
+        .nav-item.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
 
-        /* ================= 底部任务栏 ================= */
-        #taskbar {
-            height: 40px; border-top: var(--border); background: #001100; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; z-index: 100;
-        }
-        .task-apps { display: flex; gap: 10px; }
-        .task-item { padding: 5px 15px; border: 1px solid var(--glow-dark); cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
-        .task-item:hover, .task-item.active { background: var(--glow); color: #000; border-color: var(--glow); text-shadow: none; }
-        .sys-info { display: flex; gap: 20px; font-size: 0.9rem; }
-
-        /* 动画与特效 */
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        .typing { overflow: hidden; white-space: nowrap; animation: typing 1s steps(40, end); }
-        @keyframes typing { from { width: 0 } to { width: 100% } }
+        /* 动画关键帧 */
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes pulseRed { 0% { box-shadow: 0 0 20px rgba(239,68,68,0.5); } 50% { box-shadow: 0 0 50px rgba(239,68,68,0.9); } 100% { box-shadow: 0 0 20px rgba(239,68,68,0.5); } }
+        @keyframes floatUpAndFade { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-40px) scale(1.5); opacity: 0; } }
     </style>
 </head>
 <body>
-    <div class="vignette"></div>
 
-    <div id="desktop">
-        <div class="icon" onclick="OS.openApp('mail')">
-            <div class="icon-img">✉️</div>
-            <div class="icon-text">EnigmaMail</div>
-        </div>
-        <div class="icon" onclick="OS.openApp('db')">
-            <div class="icon-img">👁️</div>
-            <div class="icon-text">Odin_DB</div>
-        </div>
-        <div class="icon" onclick="OS.openApp('term')">
-            <div class="icon-img">⌨️</div>
-            <div class="icon-text">RootTerm</div>
+    <div class="header">
+        <div style="font-weight: 900; font-size: 1.2rem; letter-spacing: 1px; color: white;">CHIMERA<span style="color:var(--primary);">OS</span></div>
+        <div class="currency-box">
+            <span class="currency-icon">🧬</span>
+            <span id="ui-biomass">0</span>
         </div>
     </div>
 
-    <div class="window" id="win-mail" style="top: 50px; left: 100px; width: 500px;">
-        <div class="title-bar">
-            <span>EnigmaMail v2.1 // Inbox</span>
-            <div class="win-controls">
-                <span onclick="OS.closeApp('mail')">X</span>
+    <div class="view-container">
+        
+        <div id="view-gacha" class="view active">
+            <div class="banner-title">深渊基因库</div>
+            <div class="pity-counter">距离必定获得 SSR 还有 <span id="ui-pity">50</span> 次</div>
+            <div class="gacha-actions">
+                <button class="btn-gacha" onclick="GachaSystem.pull(1)">单次提取 <br><span style="font-size:0.8rem;font-weight:normal;color:#aaa;">消耗 100 🧬</span></button>
+                <button class="btn-gacha" onclick="GachaSystem.pull(10)" style="border-color:var(--rarity-ssr);">十连提取 <br><span style="font-size:0.8rem;font-weight:normal;color:#aaa;">消耗 1000 🧬</span></button>
+            </div>
+            
+            <div style="margin-top: 50px; font-size: 0.8rem; color: #555; text-align: center; line-height: 1.6;">
+                N级(60%) | R级(30%) | SR级(8%) | SSR级(2%)<br>
+                最多50次未获得SSR，则下次必定触发保底。
             </div>
         </div>
-        <div class="win-content">
-            <div class="mail-list" id="ui-mail-list"></div>
-            <div class="mail-body" id="ui-mail-body">NEXUS MAIL CLIENT INITIALIZED.<br>WAITING FOR SECURE CONNECTIONS...</div>
+
+        <div id="view-lab" class="view">
+            <div class="evo-container">
+                <div class="roster-panel">
+                    <div class="panel-title">已收容嵌合体 (<span id="ui-roster-count">0</span>)</div>
+                    <div class="roster-list" id="ui-roster">
+                        </div>
+                </div>
+                <div class="fusion-panel">
+                    <h2 style="position:absolute; top:20px; color:var(--text-muted); font-weight:300;">基因突变引擎</h2>
+                    <div class="fusion-slots">
+                        <div class="slot" id="slot-1" onclick="EvoSystem.clearSlot(1)"></div>
+                        <div class="plus-sign">+</div>
+                        <div class="slot" id="slot-2" onclick="EvoSystem.clearSlot(2)"></div>
+                    </div>
+                    <div style="height: 40px; margin-bottom: 20px; font-weight: bold; color: var(--rarity-ssr);" id="ui-fusion-preview">
+                        </div>
+                    <button class="btn-fuse" id="btn-fuse" disabled onclick="EvoSystem.executeFusion()">执行融合</button>
+                    <p style="margin-top: 20px; font-size: 0.8rem; color: var(--text-muted);">
+                        规则：两只同种且同级的生物可融合成更高等级。<br>
+                        隐藏配方：特定种类融合可产生<span style="color:var(--rarity-ur)"> UR 神话生物</span>。
+                    </p>
+                </div>
+            </div>
         </div>
+
+        <div id="view-combat" class="view">
+            <div class="combat-stage">
+                <div class="stage-info">第 <span id="ui-stage">1</span> 扇区：荒芜原野</div>
+                <div class="arena">
+                    <div class="team-box" id="team-player" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59,130,246,0.3);">
+                        </div>
+                    <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; opacity:0.5; font-weight:bold; font-size:2rem; font-style:italic;">VS</div>
+                    <div class="team-box" id="team-enemy" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239,68,68,0.3);">
+                        </div>
+                </div>
+                <div class="dps-meter">
+                    <div>小队总战力：<span id="ui-power" style="color:var(--primary);">0</span></div>
+                    <div>生物质产出效率：<span id="ui-bps" style="color:var(--currency);">+0.0/s</span></div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <div class="window" id="win-db" style="top: 80px; left: 150px; width: 450px;">
-        <div class="title-bar">
-            <span>Odin Global Database</span>
-            <div class="win-controls">
-                <span onclick="OS.closeApp('db')">X</span>
-            </div>
-        </div>
-        <div class="win-content">
-            <div class="db-search">
-                <input type="text" id="db-input" placeholder="Enter target Full Name..." onkeydown="if(event.key==='Enter') Apps.DB.search()">
-                <button onclick="Apps.DB.search()">QUERY</button>
-            </div>
-            <div class="db-result" id="ui-db-result">
-                CONNECTION ESTABLISHED.<br>AWAITING QUERY INPUT.
-            </div>
-        </div>
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="UI.switchTab('gacha', this)">深渊抽取 (Gacha)</div>
+        <div class="nav-item" onclick="UI.switchTab('lab', this)">进化实验 (Lab)</div>
+        <div class="nav-item" onclick="UI.switchTab('combat', this)">异星征伐 (Combat)</div>
     </div>
 
-    <div class="window" id="win-term" style="top: 150px; left: 400px; width: 550px; height: 400px;">
-        <div class="title-bar">
-            <span>Root Terminal // Crack Engine</span>
-            <div class="win-controls">
-                <span onclick="OS.closeApp('term')">X</span>
-            </div>
-        </div>
-        <div class="win-content" style="background:#000; padding:10px; display:flex; flex-direction:column;" onclick="document.getElementById('term-input').focus()">
-            <div id="term-output">
-                <div>NEXUS OS TERMINAL [Version 1.0.4]</div>
-                <div>Type 'help' for available commands.</div>
-                <div>-----------------------------------</div>
-            </div>
-            <div class="term-input-line">
-                <span class="prompt">root@nexus:~#</span>
-                <input type="text" id="term-input" autocomplete="off" spellcheck="false" onkeydown="Apps.Terminal.handleInput(event)">
-            </div>
-        </div>
-    </div>
-
-    <div id="taskbar">
-        <div class="task-apps" id="ui-taskbar"></div>
-        <div class="sys-info">
-            <div style="color:#0f0;">Balance: <span id="ui-crypto">0.00</span> NEX</div>
-            <div id="ui-clock">00:00:00</div>
-        </div>
+    <div id="gacha-overlay" onclick="GachaSystem.closeResult()">
+        <h2 style="color:white; margin-bottom: 20px; text-shadow: 0 0 10px #fff;">基因解析完成</h2>
+        <div class="result-grid" id="gacha-results"></div>
+        <div style="color: #666; margin-top: 40px; font-size: 0.9rem; animation: blink 2s infinite;">点击任意处继续</div>
     </div>
 
 <script>
 /**
- * NEXUS-OS 核心引擎
- * 包含了程序化生成系统 (PG)、视窗管理器 (WM) 和三大核心 App 逻辑。
+ * 嵌合体协议 - 核心引擎
+ * 采用数据驱动 (Data-Driven) 设计。只需在 DB 中添加数据即可无限扩展游戏内容。
  */
 
-// ================= 1. 程序化数据引擎 (Data Generation) =================
-const DataGen = {
-    firstNames: ["John", "Alice", "Robert", "Emma", "David", "Sarah", "Michael", "Elena", "James", "Sophia", "Wei", "Akira", "Hans"],
-    lastNames: ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Chen", "Tanaka", "Muller"],
-    pets: ["Fluffy", "Rex", "Bella", "Max", "Luna", "Charlie", "Lucy", "Cooper", "Oreo", "Tiger"],
-    hobbies: ["Photography", "Gaming", "Fishing", "Cycling", "Astrology", "Cooking", "Baking"],
-    cities: ["Neo-Tokyo", "New York", "London", "Berlin", "Shanghai", "Night City", "Los Angeles"],
-    
-    // 全球社工库（存储所有生成的 NPC 数据）
-    Database: [],
-
-    init() {
-        // 生成 100 个无辜的 NPC 填入数据库
-        for(let i=0; i<100; i++) {
-            this.Database.push(this.createPerson());
-        }
+// ================= 1. 静态数据库 (Data Dictionary) =================
+const DB = {
+    rarityConfigs: {
+        'N': { color: 'var(--rarity-n)', powerBase: 10,  produceBase: 1 },
+        'R': { color: 'var(--rarity-r)', powerBase: 30,  produceBase: 4 },
+        'SR': { color: 'var(--rarity-sr)', powerBase: 100, produceBase: 15 },
+        'SSR':{ color: 'var(--rarity-ssr)',powerBase: 500, produceBase: 80 },
+        'UR': { color: 'var(--rarity-ur)', powerBase: 2000,produceBase: 300 } // 仅靠隐藏融合获得
     },
-
-    createPerson() {
-        let fn = this.firstNames[Math.floor(Math.random() * this.firstNames.length)];
-        let ln = this.lastNames[Math.floor(Math.random() * this.lastNames.length)];
-        return {
-            id: 'UID-' + Math.floor(100000 + Math.random() * 900000),
-            name: `${fn} ${ln}`.toLowerCase(),
-            displayName: `${fn} ${ln}`,
-            dob: Math.floor(1970 + Math.random() * 35), // 1970 - 2005
-            city: this.cities[Math.floor(Math.random() * this.cities.length)],
-            pet: this.pets[Math.floor(Math.random() * this.pets.length)],
-            hobby: this.hobbies[Math.floor(Math.random() * this.hobbies.length)],
-            ip: `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`
-        };
-    },
-
-    getRandomTarget() {
-        return this.Database[Math.floor(Math.random() * this.Database.length)];
+    // 基础物种池 (用于抽卡)
+    pool: [
+        { id: 'slime', name: '酸性史莱姆', icon: '💧', rarity: 'N' },
+        { id: 'rat',   name: '瘟疫鼠',     icon: '🐀', rarity: 'N' },
+        { id: 'wolf',  name: '荒原狼',     icon: '🐺', rarity: 'R' },
+        { id: 'bat',   name: '吸血蝠',     icon: '🦇', rarity: 'R' },
+        { id: 'bear',  name: '狂暴装甲熊', icon: '🐻', rarity: 'SR' },
+        { id: 'snake', name: '剧毒羽蛇',   icon: '🐍', rarity: 'SR' },
+        { id: 'dragon',name: '黑龙幼崽',   icon: '🐉', rarity: 'SSR' },
+        { id: 'angel', name: '堕落天使',   icon: '👼', rarity: 'SSR' }
+    ],
+    // 隐藏合成配方 (跨物种神话融合)
+    recipes: {
+        'dragon+angel': { id: 'bahamut', name: '巴哈姆特', icon: '✨', rarity: 'UR' },
+        'bear+wolf':    { id: 'behemoth',name: '比蒙巨兽', icon: '👹', rarity: 'SSR' },
+        'slime+rat':    { id: 'abom',    name: '憎恶体',   icon: '🧟', rarity: 'R' }
     }
 };
 
-// ================= 2. 任务引擎 (Mission Controller) =================
-const MissionCtrl = {
-    currentMission: null,
-    cryptoBalance: 0,
-    missionCount: 0,
-
-    generateMission() {
-        this.missionCount++;
-        // 从数据库挑一个幸运儿作为黑客目标
-        let target = DataGen.getRandomTarget();
-        
-        // 密码逻辑生成器 (例如：宠物名+出生年份)
-        let logicType = Math.floor(Math.random() * 3);
-        let password = "";
-        let clue = "";
-        
-        if (logicType === 0) {
-            password = target.pet.toLowerCase() + target.dob;
-            clue = "We know they use a combination of their pet's name and birth year. Lowercase.";
-        } else if (logicType === 1) {
-            password = target.dob + target.hobby.toLowerCase();
-            clue = "Intel suggests the password is their birth year followed by their favorite hobby. Lowercase.";
-        } else {
-            password = target.city.split(' ')[0].toLowerCase() + target.pet.toLowerCase();
-            clue = "The password combines their city of residence (first word) and pet's name. All lowercase.";
-        }
-
-        this.currentMission = {
-            id: 'M-' + this.missionCount,
-            target: target,
-            password: password,
-            reward: (Math.random() * 2 + 1).toFixed(2) // 1.00 - 3.00 NEX
-        };
-
-        // 发送带悬念的委托邮件
-        let senders = ["Anonymous", "ShadowBroker", "The_Oracle", "Client_X"];
-        let sender = senders[Math.floor(Math.random() * senders.length)];
-        
-        Apps.Mail.receiveEmail(
-            `Contract Available: Target ${target.ip}`,
-            sender,
-            `Agent,\n\nWe need you to breach a secure terminal.\n\nTarget Name: ${target.displayName}\nTarget IP: ${target.ip}\n\n${clue}\n\nUse the Odin Database to find their personal details. Once you figure out the password, use your Terminal to execute the crack.\n\nReward: ${this.currentMission.reward} NEX\n\nDo not fail us.`
-        );
-
-        Apps.Terminal.log(`[SYS] Incoming encrypted transmission intercepted... Check Mail.`, 'c-succ');
-    },
-
-    checkPassword(ip, pwd) {
-        if (!this.currentMission) return "No active contract.";
-        if (ip !== this.currentMission.target.ip) return "Error: Target IP not found or does not match active contract.";
-        
-        if (pwd === this.currentMission.password) {
-            this.cryptoBalance += parseFloat(this.currentMission.reward);
-            document.getElementById('ui-crypto').innerText = this.cryptoBalance.toFixed(2);
-            let rewardMsg = `Access Granted. Payload deployed. ${this.currentMission.reward} NEX transferred to your wallet.`;
-            this.currentMission = null; // 结案
-            
-            // 15秒后派发新任务
-            setTimeout(() => this.generateMission(), 15000);
-            return rewardMsg;
-        } else {
-            return "Access Denied. Incorrect password.";
-        }
-    }
+// ================= 2. 玩家状态存储 (Save State) =================
+const State = {
+    biomass: 5000, // 初始给点钱爽一下
+    roster: [],    // 存放实体对象: { uid, templateId, level }
+    pityCount: 0,
+    uidCounter: 0
 };
 
-// ================= 3. 操作系统底层 (OS Core) =================
-const OS = {
-    zIndexCounter: 100,
-    apps: {
-        'mail': { name: 'EnigmaMail', open: false },
-        'db': { name: 'Odin_DB', open: false },
-        'term': { name: 'RootTerm', open: false }
+// 工具方法：获取生物完整数据
+function getUnitData(templateId) {
+    let unit = DB.pool.find(u => u.id === templateId);
+    if (!unit) {
+        // 如果池子里没有，找找是不是隐藏合成的
+        for(let key in DB.recipes) {
+            if(DB.recipes[key].id === templateId) return DB.recipes[key];
+        }
+    }
+    return unit;
+}
+
+// ================= 3. 抽卡系统 (Gacha Engine) =================
+const GachaSystem = {
+    pull(times) {
+        let cost = times * 100;
+        if (State.biomass < cost) {
+            alert("生物质不足！请在推图界面挂机产出。");
+            return;
+        }
+        State.biomass -= cost;
+        UI.updateHeader();
+
+        let results = [];
+        for (let i = 0; i < times; i++) {
+            results.push(this.rollSingle());
+        }
+
+        this.showResults(results);
     },
 
-    init() {
-        this.updateClock();
-        setInterval(() => this.updateClock(), 1000);
-        this.setupDraggable();
-        
-        // 初始派发第一个案件
-        setTimeout(() => MissionCtrl.generateMission(), 2000);
-    },
+    rollSingle() {
+        State.pityCount++;
+        let roll = Math.random() * 100;
+        let rarity = 'N';
 
-    updateClock() {
-        let d = new Date();
-        document.getElementById('ui-clock').innerText = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
-    },
-
-    openApp(appId) {
-        let win = document.getElementById(`win-${appId}`);
-        this.apps[appId].open = true;
-        win.classList.add('active');
-        this.focusWindow(win);
-        this.renderTaskbar();
-        
-        if(appId === 'term') document.getElementById('term-input').focus();
-        if(appId === 'db') document.getElementById('db-input').focus();
-    },
-
-    closeApp(appId) {
-        let win = document.getElementById(`win-${appId}`);
-        this.apps[appId].open = false;
-        win.classList.remove('active');
-        this.renderTaskbar();
-    },
-
-    focusWindow(win) {
-        this.zIndexCounter++;
-        win.style.zIndex = this.zIndexCounter;
-    },
-
-    renderTaskbar() {
-        let tb = document.getElementById('ui-taskbar');
-        tb.innerHTML = '';
-        for (let id in this.apps) {
-            if (this.apps[id].open) {
-                let el = document.createElement('div');
-                el.className = 'task-item active';
-                el.innerText = this.apps[id].name;
-                el.onclick = () => this.focusWindow(document.getElementById(`win-${id}`));
-                tb.appendChild(el);
+        // 保底判定
+        if (State.pityCount >= 50) {
+            rarity = 'SSR';
+            State.pityCount = 0; // 触发保底重置
+        } else {
+            // 真实爆率: SSR 2%, SR 8%, R 30%, N 60%
+            if (roll <= 2) {
+                rarity = 'SSR';
+                State.pityCount = 0; // 欧皇出金，重置保底
+            } else if (roll <= 10) {
+                rarity = 'SR';
+            } else if (roll <= 40) {
+                rarity = 'R';
             }
         }
+
+        // 从对应稀有度的池子中随机挑选
+        let poolForRarity = DB.pool.filter(u => u.rarity === rarity);
+        let pulledTemplate = poolForRarity[Math.floor(Math.random() * poolForRarity.length)];
+        
+        // 实体化并加入兵营
+        let newUnit = {
+            uid: ++State.uidCounter,
+            templateId: pulledTemplate.id,
+            level: 1
+        };
+        State.roster.push(newUnit);
+        
+        return pulledTemplate;
     },
 
-    // 窗口拖拽系统
-    setupDraggable() {
-        let isDragging = false;
-        let currentWindow = null;
-        let offsetX = 0, offsetY = 0;
+    showResults(results) {
+        const overlay = document.getElementById('gacha-overlay');
+        const grid = document.getElementById('gacha-results');
+        grid.innerHTML = '';
+        overlay.style.display = 'flex';
+        
+        document.getElementById('ui-pity').innerText = 50 - State.pityCount;
+        UI.renderRoster(); // 刷新背包
+        CombatSystem.updateTeam(); // 更新战力
 
-        document.querySelectorAll('.title-bar').forEach(bar => {
-            bar.addEventListener('mousedown', (e) => {
-                // 点击关闭按钮时不触发拖拽
-                if(e.target.tagName.toLowerCase() === 'span') return;
-                
-                isDragging = true;
-                currentWindow = bar.parentElement;
-                OS.focusWindow(currentWindow);
-                
-                let rect = currentWindow.getBoundingClientRect();
-                offsetX = e.clientX - rect.left;
-                offsetY = e.clientY - rect.top;
-            });
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging || !currentWindow) return;
-            // 确保窗口不会被拖出屏幕外太多
-            let x = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth - 100));
-            let y = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - 50));
+        // 级联动画渲染
+        results.forEach((item, index) => {
+            let card = document.createElement('div');
+            card.className = `card-reveal rarity-${item.rarity}`;
+            card.innerHTML = `
+                <div class="cr-icon">${item.icon}</div>
+                <div class="cr-name">${item.name}</div>
+            `;
+            grid.appendChild(card);
             
-            currentWindow.style.left = x + 'px';
-            currentWindow.style.top = y + 'px';
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            currentWindow = null;
-        });
-
-        // 点击窗口内容区也能置顶
-        document.querySelectorAll('.window').forEach(win => {
-            win.addEventListener('mousedown', () => OS.focusWindow(win));
-        });
-    }
-};
-
-// ================= 4. 应用程序逻辑 (Apps) =================
-const Apps = {
-    // 邮件客户端
-    Mail: {
-        inbox: [],
-        receiveEmail(subject, sender, body) {
-            this.inbox.unshift({ id: Date.now(), subject, sender, body, read: false });
-            this.renderList();
-            // 如果没开着，给点提示可以做闪烁，这里简化
-        },
-        renderList() {
-            let html = '';
-            this.inbox.forEach((mail, index) => {
-                html += `<div class="mail-item ${mail.read ? '' : 'unread'}" onclick="Apps.Mail.readEmail(${index}, this)">
-                            <span>${mail.sender}</span>
-                            <span style="opacity:0.7; font-size:0.8em">${mail.subject}</span>
-                         </div>`;
-            });
-            document.getElementById('ui-mail-list').innerHTML = html;
-        },
-        readEmail(index, el) {
-            let mail = this.inbox[index];
-            mail.read = true;
-            this.renderList(); // 去掉未读标记
-            
-            // 简单打字机效果显示邮件正文
-            let bodyEl = document.getElementById('ui-mail-body');
-            bodyEl.innerHTML = `FROM: ${mail.sender}<br>SUBJ: ${mail.subject}<br>--------------------------<br><br>${mail.body}`;
-        }
-    },
-
-    // 数据库
-    DB: {
-        search() {
-            let input = document.getElementById('db-input').value.trim().toLowerCase();
-            let resultEl = document.getElementById('ui-db-result');
-            
-            if (!input) return;
-            
-            resultEl.innerHTML = "SEARCHING...";
-            
-            // 模拟网络延迟
+            // 延迟触发动画
             setTimeout(() => {
-                let found = DataGen.Database.filter(p => p.name.includes(input));
-                
-                if (found.length === 0) {
-                    resultEl.innerHTML = `<span style="color:var(--glow-alert)">ERROR: No records found for '${input}'.</span>`;
-                    return;
+                card.classList.add('show');
+                // 如果是SSR出金，稍微震动一下屏幕
+                if(item.rarity === 'SSR') {
+                    document.body.style.transform = 'translateY(5px)';
+                    setTimeout(()=>document.body.style.transform = '', 50);
                 }
-
-                let html = `MATCH FOUND: ${found.length} record(s).<br><br>`;
-                found.forEach(p => {
-                    html += `
-                        <div style="border: 1px solid var(--glow-dark); padding: 10px; margin-bottom: 10px;">
-                            <div class="db-field"><div class="db-field-name">UID:</div><div>${p.id}</div></div>
-                            <div class="db-field"><div class="db-field-name">NAME:</div><div>${p.displayName}</div></div>
-                            <div class="db-field"><div class="db-field-name">DOB:</div><div>${p.dob}</div></div>
-                            <div class="db-field"><div class="db-field-name">LOC:</div><div>${p.city}</div></div>
-                            <div class="db-field"><div class="db-field-name">PET:</div><div>${p.pet}</div></div>
-                            <div class="db-field"><div class="db-field-name">HOBBY:</div><div>${p.hobby}</div></div>
-                        </div>`;
-                });
-                resultEl.innerHTML = html;
-            }, 600);
-        }
+            }, index * 100);
+        });
     },
 
-    // 终端
-    Terminal: {
-        log(msg, className = '') {
-            let out = document.getElementById('term-output');
-            let div = document.createElement('div');
-            div.className = `term-log ${className}`;
-            div.innerText = msg;
-            out.appendChild(div);
-            out.scrollTop = out.scrollHeight; // 自动滚动到底部
-        },
-        handleInput(e) {
-            if (e.key === 'Enter') {
-                let inputEl = document.getElementById('term-input');
-                let cmd = inputEl.value.trim();
-                inputEl.value = '';
-                
-                if(!cmd) return;
-                this.log(`root@nexus:~# ${cmd}`);
-                this.execute(cmd);
-            }
-        },
-        execute(cmdStr) {
-            let args = cmdStr.split(' ');
-            let command = args[0].toLowerCase();
-
-            switch(command) {
-                case 'help':
-                    this.log("Available commands:");
-                    this.log("  clear   - Clear terminal output");
-                    this.log("  ifconfig- Display network info");
-                    this.log("  crack   - Syntax: crack [IP_ADDRESS] [PASSWORD]");
-                    break;
-                case 'clear':
-                    document.getElementById('term-output').innerHTML = '';
-                    break;
-                case 'ifconfig':
-                    this.log("eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500");
-                    this.log("        inet 192.168.1.104  netmask 255.255.255.0  broadcast 192.168.1.255");
-                    break;
-                case 'crack':
-                    if (args.length < 3) {
-                        this.log("Usage: crack [IP_ADDRESS] [PASSWORD]", "term-err");
-                    } else {
-                        let ip = args[1];
-                        let pwd = args.slice(2).join(' '); // 密码可能含空格
-                        this.log(`Initiating brute force protocol against ${ip}...`);
-                        
-                        // 模拟破解延迟
-                        setTimeout(() => {
-                            let result = MissionCtrl.checkPassword(ip, pwd);
-                            if (result.includes("Denied") || result.includes("Error")) {
-                                this.log(result, "term-err");
-                            } else {
-                                this.log(result, "term-succ");
-                            }
-                        }, 1000);
-                    }
-                    break;
-                default:
-                    this.log(`Command not found: ${command}`, "term-err");
-            }
-        }
+    closeResult() {
+        document.getElementById('gacha-overlay').style.display = 'none';
     }
 };
 
-// ================= 系统启动 =================
-window.onload = () => {
-    DataGen.init();
-    OS.init();
+// ================= 4. 进化系统 (Evolution Engine) =================
+const EvoSystem = {
+    slots: [null, null],
+
+    selectUnit(uid) {
+        let unit = State.roster.find(u => u.uid === uid);
+        if (!unit) return;
+
+        // 如果已经在槽位里，点击则取消
+        if (this.slots[0] === uid) { this.clearSlot(1); return; }
+        if (this.slots[1] === uid) { this.clearSlot(2); return; }
+
+        // 找空位放进去
+        if (this.slots[0] === null) {
+            this.slots[0] = uid;
+        } else if (this.slots[1] === null) {
+            this.slots[1] = uid;
+        }
+
+        this.renderSlots();
+        UI.renderRoster(); // 刷新背包选中状态
+    },
+
+    clearSlot(idx) {
+        this.slots[idx-1] = null;
+        this.renderSlots();
+        UI.renderRoster();
+    },
+
+    renderSlots() {
+        let btn = document.getElementById('btn-fuse');
+        let preview = document.getElementById('ui-fusion-preview');
+        preview.innerText = '';
+        btn.disabled = true;
+
+        for (let i = 0; i < 2; i++) {
+            let slotEl = document.getElementById(`slot-${i+1}`);
+            let uid = this.slots[i];
+            if (uid) {
+                let unit = State.roster.find(u => u.uid === uid);
+                let tData = getUnitData(unit.templateId);
+                slotEl.innerHTML = tData.icon;
+                slotEl.className = `slot filled rarity-${tData.rarity}`;
+            } else {
+                slotEl.innerHTML = '';
+                slotEl.className = 'slot';
+            }
+        }
+
+        // 判定是否可融合
+        if (this.slots[0] && this.slots[1]) {
+            let u1 = State.roster.find(u => u.uid === this.slots[0]);
+            let u2 = State.roster.find(u => u.uid === this.slots[1]);
+            
+            // 判定1：同种同级融合升星
+            if (u1.templateId === u2.templateId && u1.level === u2.level) {
+                preview.innerText = `[预测结果] 等级提升：Lv.${u1.level} -> Lv.${u1.level + 1}`;
+                preview.style.color = '#10b981';
+                btn.disabled = false;
+                return;
+            }
+
+            // 判定2：检查隐藏配方
+            let combo1 = `${u1.templateId}+${u2.templateId}`;
+            let combo2 = `${u2.templateId}+${u1.templateId}`;
+            let recipe = DB.recipes[combo1] || DB.recipes[combo2];
+            
+            if (recipe) {
+                preview.innerText = `[基因变异警报] 预测将产生神话生物：${recipe.name} ${recipe.icon}`;
+                preview.style.color = 'var(--rarity-ur)';
+                btn.disabled = false;
+                return;
+            }
+
+            preview.innerText = "[排异反应] 基因链不兼容。";
+            preview.style.color = '#ef4444';
+        }
+    },
+
+    executeFusion() {
+        let u1 = State.roster.find(u => u.uid === this.slots[0]);
+        let u2 = State.roster.find(u => u.uid === this.slots[1]);
+        
+        // 判定结果
+        let combo1 = `${u1.templateId}+${u2.templateId}`;
+        let combo2 = `${u2.templateId}+${u1.templateId}`;
+        let recipe = DB.recipes[combo1] || DB.recipes[combo2];
+
+        // 删掉原来的两只 (从 roster 中移除)
+        State.roster = State.roster.filter(u => u.uid !== u1.uid && u.uid !== u2.uid);
+
+        if (recipe) {
+            // 生成新物种
+            State.roster.push({ uid: ++State.uidCounter, templateId: recipe.id, level: 1 });
+            alert(`🎉 融合成功！你获得了变异神话生物：【${recipe.name}】！`);
+        } else {
+            // 升星
+            State.roster.push({ uid: ++State.uidCounter, templateId: u1.templateId, level: u1.level + 1 });
+            alert(`✨ 进化成功！当前等级：Lv.${u1.level + 1}`);
+        }
+
+        // 重置
+        this.slots = [null, null];
+        this.renderSlots();
+        UI.renderRoster();
+        CombatSystem.updateTeam();
+    }
 };
+
+// ================= 5. 战斗与挂机系统 (Idle Combat System) =================
+const CombatSystem = {
+    totalPower: 0,
+    bps: 0, // Biomass per second
+    
+    // 只取战力最高的前 5 只上阵
+    updateTeam() {
+        let teamInfo = State.roster.map(u => {
+            let tData = getUnitData(u.templateId);
+            let rConf = DB.rarityConfigs[tData.rarity];
+            // 公式：基础值 * (1.5 ^ (等级-1))
+            let power = Math.floor(rConf.powerBase * Math.pow(1.5, u.level - 1));
+            let produce = rConf.produceBase * u.level;
+            return { ...u, ...tData, power, produce };
+        });
+
+        // 排序并取前5
+        teamInfo.sort((a, b) => b.power - a.power);
+        let top5 = teamInfo.slice(0, 5);
+
+        this.totalPower = 0;
+        this.bps = 0;
+        
+        const teamBox = document.getElementById('team-player');
+        teamBox.innerHTML = '';
+
+        top5.forEach(u => {
+            this.totalPower += u.power;
+            this.bps += u.produce;
+            teamBox.innerHTML += `
+                <div class="unit-thumb rarity-${u.rarity}" style="width:45px; font-size:1.2rem;">
+                    ${u.icon} <span class="unit-lvl">Lv.${u.level}</span>
+                </div>
+            `;
+        });
+
+        document.getElementById('ui-power').innerText = this.totalPower;
+        document.getElementById('ui-bps').innerText = `+${this.bps}/s`;
+    },
+
+    // 核心主循环
+    loop() {
+        if (this.bps > 0) {
+            State.biomass += this.bps;
+            UI.updateHeader();
+            
+            // 制造视觉打击特效
+            if (Math.random() < 0.3) this.spawnDamageText();
+        }
+        requestAnimationFrame(() => this.loop()); // 60fps 循环
+    },
+
+    spawnDamageText() {
+        let arena = document.querySelector('.arena');
+        let text = document.createElement('div');
+        text.className = 'dmg-text';
+        text.innerText = `-${Math.floor(this.totalPower * (0.8 + Math.random()*0.4))}`;
+        
+        // 随机在右侧区域生成
+        text.style.left = `${50 + Math.random() * 40}%`;
+        text.style.top = `${20 + Math.random() * 60}%`;
+        
+        arena.appendChild(text);
+        setTimeout(() => text.remove(), 800);
+    }
+};
+
+// ================= 6. UI 渲染与路由 (View Management) =================
+const UI = {
+    init() {
+        this.updateHeader();
+        this.renderRoster();
+        document.getElementById('ui-pity').innerText = 50 - State.pityCount;
+        CombatSystem.updateTeam();
+        
+        // 预设几个假敌人
+        document.getElementById('team-enemy').innerHTML = `
+            <div class="unit-thumb rarity-N" style="width:45px; font-size:1.2rem; filter:grayscale(1);">👾</div>
+            <div class="unit-thumb rarity-N" style="width:45px; font-size:1.2rem; filter:grayscale(1);">👽</div>
+            <div class="unit-thumb rarity-R" style="width:45px; font-size:1.2rem; filter:grayscale(1);">🦠</div>
+        `;
+        
+        // 启动挂机循环
+        let lastTime = Date.now();
+        setInterval(() => {
+            let now = Date.now();
+            let dt = (now - lastTime) / 1000;
+            lastTime = now;
+            if(CombatSystem.bps > 0) {
+                State.biomass += CombatSystem.bps * dt;
+                this.updateHeader();
+            }
+        }, 1000); // 资源每秒结算1次
+        
+        CombatSystem.loop(); // 动画特效跑 requestAnimationFrame
+    },
+
+    switchTab(tabId, navEl) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(`view-${tabId}`).classList.add('active');
+        navEl.classList.add('active');
+        
+        if (tabId === 'lab') this.renderRoster(); // 切换到实验室时刷新背包
+    },
+
+    updateHeader() {
+        document.getElementById('ui-biomass').innerText = Math.floor(State.biomass);
+    },
+
+    renderRoster() {
+        let container = document.getElementById('ui-roster');
+        container.innerHTML = '';
+        document.getElementById('ui-roster-count').innerText = State.roster.length;
+
+        // 按稀有度和等级排序
+        let sorted = [...State.roster].sort((a,b) => {
+            let ra = DB.rarityConfigs[getUnitData(a.templateId).rarity].powerBase;
+            let rb = DB.rarityConfigs[getUnitData(b.templateId).rarity].powerBase;
+            if(rb !== ra) return rb - ra;
+            return b.level - a.level;
+        });
+
+        sorted.forEach(u => {
+            let tData = getUnitData(u.templateId);
+            let isSelected = (EvoSystem.slots[0] === u.uid || EvoSystem.slots[1] === u.uid);
+            let classStr = `unit-thumb rarity-${tData.rarity} ${isSelected ? 'selected' : ''}`;
+            
+            container.innerHTML += `
+                <div class="${classStr}" onclick="EvoSystem.selectUnit(${u.uid})">
+                    ${tData.icon}
+                    <span class="unit-lvl">Lv.${u.level}</span>
+                </div>
+            `;
+        });
+    }
+};
+
+// 启动引擎
+window.onload = () => { UI.init(); };
 
 </script>
 </body>
