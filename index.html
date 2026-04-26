@@ -1931,6 +1931,27 @@
             }
         }, 1200); // 1.2秒的画符前摇
     };
+    // ========================================================================
+    // [UI 视觉优化补丁 (UI Contrast Patch)]
+    // 修复顶部资源栏数字颜色太暗看不清的问题
+    // ========================================================================
+    const uiFixStyles = document.createElement('style');
+    uiFixStyles.innerHTML = `
+        /* 强制资源数字为高亮纯白，并添加一点光晕提升辨识度 */
+        #ui-coins, #ui-jade {
+            color: #ffffff !important;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+            font-weight: 900 !important;
+            letter-spacing: 1px !important;
+        }
+        /* 让资源外框的背景对比度更好 */
+        .res-item {
+            background: rgba(20, 15, 25, 0.8) !important;
+            border: 1px solid #5b4b70 !important;
+            color: #ffffff !important;
+        }
+    `;
+    document.head.appendChild(uiFixStyles);
 </script>
 </body>
 </html>
