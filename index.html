@@ -1685,6 +1685,16 @@
         }
     `;
     document.head.appendChild(uiFixStyles);
+    // ========================================================================
+    // [终极兼容补丁 (Ultimate Compatibility Patch)]
+    // 自动兼容 Stage 和 Stages 命名，防止旧版补丁报错
+    // ========================================================================
+    if (GameApp.Data.Stage && !GameApp.Data.Stages) {
+        GameApp.Data.Stages = GameApp.Data.Stage;
+    }
+    if (GameApp.Data.Stages && !GameApp.Data.Stage) {
+        GameApp.Data.Stage = GameApp.Data.Stages;
+    }
 </script>
 </body>
 </html>
