@@ -2146,6 +2146,260 @@
             }, 150);
         }
     };
+    // ========================================================================
+    // [专属兑换码 UI 补丁 (Custom Redeem Modal Patch)]
+    // 弃用容易被拦截的浏览器 prompt，原生手写极具质感的神龛暗号弹窗
+    // ========================================================================
+
+    GameApp.UI.openRedeemCode = function() {
+        // 先移除可能已经存在的弹窗
+        const existingModal = document.getElementById('custom-redeem-modal');
+        if (existingModal) existingModal.remove();
+
+        // 创建自定义的暗号弹窗
+        const modal = document.createElement('div');
+        modal.id = 'custom-redeem-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000;
+            display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+
+        modal.innerHTML = `
+            <div style="background: var(--bg-panel); border: 2px solid #fbbf24; border-radius: 15px; padding: 25px; text-align: center; width: 85%; max-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.9);">
+                <div style="font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 15px #fbbf24;">⛩️</div>
+                <h3 style="color: #fbbf24; margin-bottom: 20px; letter-spacing: 2px;">神龛暗号</h3>
+                <input type="text" id="redeem-input" placeholder="请输入兑换码" autocomplete="off" style="
+                    width: 100%; padding: 12px; margin-bottom: 20px; background: #111; border: 1px solid #5b4b70; 
+                    color: #fff; border-radius: 8px; text-align: center; font-size: 1.2rem; outline: none; box-sizing: border-box; font-weight: bold;
+                ">
+                <div style="display: flex; gap: 15px;">
+                    <button id="btn-redeem-cancel" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #3d324c; color: #fff; font-weight: bold; cursor: pointer;">取消</button>
+                    <button id="btn-redeem-confirm" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: linear-gradient(90deg, #d97706, #b45309); color: #fff; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);">兑换</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 自动聚焦输入框
+        document.getElementById('redeem-input').focus();
+
+        // 绑定取消按钮
+        document.getElementById('btn-redeem-cancel').onclick = () => {
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 200);
+        };
+
+        // 绑定兑换逻辑
+        document.getElementById('btn-redeem-confirm').onclick = () => {
+            // 获取输入内容，并用 trim() 自动删掉不小心多打的空格
+            let code = document.getElementById('redeem-input').value.trim();
+            if (!code) return;
+
+            // 确保记录表存在（防止旧存档没这数据）
+            if (!GameApp.State.Data.redeemedCodes) GameApp.State.Data.redeemedCodes = {};
+
+            if (code === "6699") {
+                if (GameApp.State.Data.redeemedCodes["6699"]) {
+                    GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+                } else {
+                    GameApp.State.modifyResource('jade', 100000000);
+                    GameApp.State.Data.redeemedCodes["6699"] = true;
+                    GameApp.UI.toast("🎉 兑换成功！获得 1 亿 勾玉！");
+                    GameApp.Storage.save(); // 强制立即保存
+                }
+            } else if (code === "8888") {
+                if (GameApp.State.Data.redeemedCodes["8888"]) {
+                    GameApp.UI.toast("贪心可不好哦，该暗号您已经使用过了！", true);
+                } else {
+                    GameApp.State.modifyResource('coins', 1000000000000000);
+                    GameApp.State.Data.redeemedCodes["8888"] = true;
+                    GameApp.UI.toast("🎉 兑换成功！获得 1000兆 金币！");
+                    GameApp.Storage.save(); // 强制立即保存
+                }
+            } else {
+                GameApp.UI.toast("暗号无效或已过期！", true);
+            }
+
+            // 兑换完关闭弹窗并强制刷新顶栏资源
+            modal.remove();
+            GameApp.UI.updateResources();
+        };
+    };
+    // ========================================================================
+    // [沉浸式高级视觉补丁 (Polished VFX Overhaul Patch)]
+    // 移除花里胡哨的文字横幅，重构为真实的斩击/爆破视觉特效，优化飘字轨迹。
+    // ========================================================================
+
+    // 1. 注入高级图形特效 CSS
+    const proVfxStyles = document.createElement('style');
+    proVfxStyles.innerHTML = `
+        /* 刀光斩击特效 */
+        .vfx-slash {
+            position: absolute; top: 50%; left: 50%; width: 180px; height: 6px;
+            background: #fff; border-radius: 50%; pointer-events: none; z-index: 60;
+            box-shadow: 0 0 20px 8px var(--vfx-color);
+            transform: translate(-50%, -50%) rotate(var(--angle)) scaleX(0);
+            animation: vfxSlashAnim 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+            mix-blend-mode: screen;
+        }
+        @keyframes vfxSlashAnim {
+            0% { transform: translate(-50%, -50%) rotate(var(--angle)) scaleX(0) scaleY(3); opacity: 1; }
+            50% { transform: translate(-50%, -50%) rotate(var(--angle)) scaleX(1) scaleY(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) rotate(var(--angle)) scaleX(1.2) scaleY(0); opacity: 0; }
+        }
+
+        /* 灵力爆破特效 */
+        .vfx-burst {
+            position: absolute; top: 50%; left: 50%; width: 100px; height: 100px;
+            background: radial-gradient(circle, #fff 10%, var(--vfx-color) 40%, transparent 70%);
+            border-radius: 50%; pointer-events: none; z-index: 59;
+            transform: translate(-50%, -50%) scale(0);
+            animation: vfxBurstAnim 0.3s ease-out forwards;
+            mix-blend-mode: screen;
+        }
+        @keyframes vfxBurstAnim {
+            0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; filter: brightness(2); }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; filter: brightness(1); }
+        }
+
+        /* 极简高级伤害飘字 */
+        .clean-dmg {
+            position: absolute; font-weight: 900; font-family: Tahoma, sans-serif;
+            pointer-events: none; z-index: 65; letter-spacing: -1px;
+            animation: dmgPop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        .clean-dmg.normal { color: #fff; font-size: 1.2rem; text-shadow: 0 2px 2px #000, 0 0 4px #000; }
+        .clean-dmg.crit { color: #facc15; font-size: 1.8rem; text-shadow: 0 3px 0 #b45309, 0 0 8px #d97706, 0 0 2px #000; z-index: 66; }
+        .clean-dmg.skill { color: #f87171; font-size: 1.5rem; text-shadow: 0 2px 0 #991b1b, 0 0 6px #ef4444; }
+
+        @keyframes dmgPop {
+            0% { opacity: 0; transform: translate(0, 20px) scale(0.5); }
+            20% { opacity: 1; transform: translate(var(--x), -10px) scale(1.1); }
+            100% { opacity: 0; transform: translate(var(--x), -40px) scale(0.8); }
+        }
+
+        /* 取消之前的乱晃震屏，改为 Boss 本体微受击震动 */
+        .boss-hit-shake { animation: bossHit 0.2s; filter: brightness(1.5); }
+        @keyframes bossHit {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px) scale(0.98); }
+            75% { transform: translateX(4px) scale(0.98); }
+        }
+    `;
+    document.head.appendChild(proVfxStyles);
+
+    // 2. 覆盖之前的花哨横幅：直接清空，保持画面干净
+    GameApp.UI.showSkillBanner = function() {}; 
+    GameApp.UI.showTraitBubble = function() {}; 
+
+    // 3. 核心视觉：在 Boss 身上生成图形特效 (刀光 / 爆破)
+    GameApp.UI.playVisualEffect = function(type, rarity) {
+        const bossZone = document.getElementById('boss-entity');
+        if (!bossZone) return;
+
+        const vfx = document.createElement('div');
+        
+        // 稀有度决定特效颜色
+        let color = 'rgba(255, 255, 255, 0.8)';
+        if (rarity === 'SSR' || rarity === 'SP') color = 'rgba(251, 191, 36, 0.9)'; // 金光
+        else if (rarity === 'SR') color = 'rgba(192, 132, 252, 0.9)'; // 紫光
+        else if (rarity === 'R') color = 'rgba(96, 165, 250, 0.9)'; // 蓝光
+
+        vfx.style.setProperty('--vfx-color', color);
+
+        if (type === 'slash') {
+            vfx.className = 'vfx-slash';
+            // 随机斩击角度
+            const angle = Math.floor(Math.random() * 180) - 90;
+            vfx.style.setProperty('--angle', `${angle}deg`);
+        } else {
+            vfx.className = 'vfx-burst';
+        }
+
+        bossZone.appendChild(vfx);
+        
+        // Boss 实体轻微受击震动
+        bossZone.classList.remove('boss-hit-shake');
+        void bossZone.offsetWidth; // 触发重绘重置动画
+        bossZone.classList.add('boss-hit-shake');
+
+        setTimeout(() => vfx.remove(), 400);
+    };
+
+    // 4. 重写伤害飘字：更加紧凑、有重量感、区分普攻与技能
+    GameApp.UI.spawnDamageText = function(damage, isCrit, isSkill) {
+        const bossZone = document.getElementById('boss-entity');
+        if (!bossZone) return;
+
+        const el = document.createElement('div');
+        el.className = 'clean-dmg';
+        el.innerText = GameApp.Utils.formatNumber(damage);
+        
+        if (isCrit) el.classList.add('crit');
+        else if (isSkill) el.classList.add('skill');
+        else el.classList.add('normal');
+
+        // 随机 X 轴偏移，防止数字完全重叠
+        const offsetX = Math.floor(Math.random() * 60) - 30;
+        el.style.setProperty('--x', `${offsetX}px`);
+        
+        // 随机初始位置在 Boss 范围内
+        el.style.left = `calc(50% + ${offsetX}px)`;
+        el.style.top = `${Math.floor(Math.random() * 40) + 20}%`;
+        
+        bossZone.appendChild(el);
+        setTimeout(() => el.remove(), 600);
+    };
+
+    // 5. 劫持战斗心跳逻辑：衔接新版特效
+    const originalProcessTick = GameApp.Systems.Combat.processTick;
+    GameApp.Systems.Combat.processTick = function(deltaSeconds) {
+        if (this.isBossDead) return;
+
+        let teamIds = GameApp.State.Data.Team;
+        if (teamIds.length === 0) return;
+
+        teamIds.forEach(id => {
+            let stats = GameApp.State.getShikigamiStats(id);
+            let rawData = GameApp.Data.Shikigami[id];
+            if (!stats) return;
+
+            // 降低技能触发频率，避免光污染 (10% 概率触发大招)
+            let isSkillReady = Math.random() < 0.10; 
+            let damage = stats.atk * deltaSeconds;
+            let currentSkill = rawData.skill;
+
+            if (isSkillReady && currentSkill) {
+                damage *= currentSkill.mult;
+                // 触发真实的图形特效：SSR/SP 触发十字爆破，其他触发斩击
+                if (stats.rarity === 'SSR' || stats.rarity === 'SP') {
+                    GameApp.UI.playVisualEffect('burst', stats.rarity);
+                    GameApp.UI.playVisualEffect('slash', stats.rarity); // 叠加两层
+                } else {
+                    GameApp.UI.playVisualEffect('slash', stats.rarity);
+                }
+            }
+
+            let isCrit = Math.random() < (stats.initCritRate || 0.1);
+            if (isCrit) damage *= (stats.initCritDmg || 1.5);
+
+            let finalDmg = Math.floor(damage);
+            this.currentEnemyHp -= finalDmg;
+
+            if (finalDmg > 0) {
+                GameApp.UI.updateBossHpBar(this.currentEnemyHp, this.currentEnemyMaxHp);
+                // 传入三个参数，区分颜色
+                GameApp.UI.spawnDamageText(finalDmg, isCrit, isSkillReady);
+                GameApp.UI.triggerAttackAnim(id, isSkillReady);
+            }
+        });
+
+        if (this.currentEnemyHp <= 0) {
+            this._handleEnemyDeath();
+        }
+    };
 </script>
 </body>
 </html>
